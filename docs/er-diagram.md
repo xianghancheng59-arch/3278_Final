@@ -1,75 +1,36 @@
-# CampusSwap ER diagram
+# Entity–relationship design
 
-The MVP uses six entities. A user may sell many items, buy many items, and favorite many items. A category groups many items. Each item may have zero or one order because the MVP treats each listing as a single physical item.
+The approved classroom-style diagram is maintained on the separate **improve-er-diagram-layout** branch:
 
-```mermaid
-erDiagram
-    USERS ||--o{ ITEMS : sells
-    CATEGORIES ||--o{ ITEMS : contains
-    USERS ||--o{ FAVORITES : creates
-    ITEMS ||--o{ FAVORITES : receives
-    USERS ||--o{ ORDERS : places
-    ITEMS ||--o| ORDERS : "is ordered in"
+- [View the diagram and explanation](https://github.com/xianghancheng59-arch/3278_Final/blob/improve-er-diagram-layout/docs/er-diagram.md)
+- [SVG](https://github.com/xianghancheng59-arch/3278_Final/blob/improve-er-diagram-layout/docs/diagrams/campusswap-chen.svg)
+- [PNG for slides](https://github.com/xianghancheng59-arch/3278_Final/blob/improve-er-diagram-layout/docs/diagrams/campusswap-chen.png)
+- [Editable drawing source](https://github.com/xianghancheng59-arch/3278_Final/blob/improve-er-diagram-layout/scripts/render_er_diagram.py)
 
-    USERS {
-        bigint id PK
-        varchar full_name
-        varchar email UK
-        varchar password_hash
-        varchar contact_phone
-        varchar avatar_url
-        varchar status
-        datetime created_at
-        datetime updated_at
-    }
+This page summarizes the design implemented by [schema.sql](../sql/schema.sql). The diagram files have not been merged into main.
 
-    CATEGORIES {
-        bigint id PK
-        varchar name UK
-        datetime created_at
-    }
+## Entities and relationships
 
-    ITEMS {
-        bigint id PK
-        bigint seller_id FK
-        bigint category_id FK
-        varchar title
-        text description
-        decimal price
-        varchar item_condition
-        varchar status
-        varchar location
-        varchar image_url
-        datetime created_at
-        datetime updated_at
-    }
+There are four conceptual entity sets: **Users, Categories, Items and Orders**. The **favorites** relationship becomes the fifth SQL table when the ER model is converted to tables.
 
-    FAVORITES {
-        bigint user_id FK
-        bigint item_id FK
-        datetime created_at
-    }
+| Relationship | Meaning | SQL reference |
+|---|---|---|
+| Users sells Items | A user sells zero/many items; each item has exactly one seller. | `items.seller_id → users.id` |
+| Categories classifies Items | A category contains zero/many items; each item has exactly one category. | `items.category_id → categories.id` |
+| Users places Orders | A user places zero/many orders; each order has exactly one buyer. | `orders.buyer_id → users.id` |
+| Orders for_item Items | Each order concerns one item; an item can have zero/many historical orders. | `orders.item_id → items.id` |
+| Users favorites Items | Both sides can participate zero/many times; created_at records when the item was saved. | `favorites(user_id, item_id, created_at)` |
 
-    ORDERS {
-        bigint id PK
-        bigint buyer_id FK
-        bigint item_id FK
-        decimal agreed_amount
-        varchar pickup_location
-        varchar status
-        datetime created_at
-        datetime updated_at
-    }
-```
+The same user can be both a buyer and seller. Each entity has an independent `id` primary key. Favorites uses the composite primary key `(user_id, item_id)` to prevent duplicate saves.
 
-## Relationship explanation
+## Reading the approved diagram
 
-- `USERS` to `ITEMS`: one user can publish many items; every item has exactly one seller.
-- `CATEGORIES` to `ITEMS`: one category can contain many items; every item has one category.
-- `USERS` to `ITEMS` through `FAVORITES`: this is a many-to-many relationship resolved by the junction table. The composite primary key prevents duplicate favorites.
-- `USERS` to `ORDERS`: one user can place many orders; every order has one buyer.
-- `ITEMS` to `ORDERS`: an item can have zero or one order. A unique constraint on `orders.item_id` enforces the single-item rule.
+Rectangles represent entities, diamonds relationships, and ellipses attributes. Primary keys are **bold and underlined**. An arrow toward an entity indicates at most one on that side; double relationship lines indicate total participation. For example, the arrow to Users and the double line at Items mean every item has exactly one seller.
 
-## Why the model is normalized
+Favorites is drawn as an M:N relationship with a timestamp, following the *like* relationship in the COMP3278 Assignment 1 suggested answer. Its SQL table does not require a separate strong entity in the conceptual diagram.
 
-Seller and buyer data are stored once in `USERS`, category names are stored once in `CATEGORIES`, and many-to-many favorites are separated into `FAVORITES`. The order keeps transaction-time values such as `agreed_amount` and `pickup_location`, so later listing edits do not rewrite the transaction record.
+## Order history and implementation boundaries
+
+An item may have several historical orders because cancelled orders are retained. There is no lifetime unique constraint on `orders.item_id`. **At most one active order** (pending/confirmed) is a separate backend rule; it is not guaranteed by the current DDL.
+
+Orders preserve agreed_amount and pickup_location as snapshots. Any order history blocks hard deletion of the referenced item. Buyer/seller checks, valid status transitions and authorization require backend enforcement. See the [database guide](database.md) for details.

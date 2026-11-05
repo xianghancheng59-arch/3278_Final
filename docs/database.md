@@ -1,137 +1,86 @@
-# CampusSwap database handoff — Member B
+# Database guide — Member B
 
-Prepared 2026-11-05 against A's commit `9845d8c`. This is the database implementation contract for A/C/D/E. The original ER document is intentionally unchanged pending the user's review of B's work.
+The database implementation consists of [schema.sql](../sql/schema.sql), [seed.sql](../sql/seed.sql), [queries.sql](../sql/queries.sql) and the [verification script](../tests/verify_database.py). Follow the [README](../README.md#database-setup) for installation.
 
-## Deliverables and current status
+## Tables
 
-- `sql/schema.sql`: five tables, primary/foreign keys, required fields, uniqueness and value constraints.
-- `sql/seed.sql`: deterministic fictional data: 5 users, 5 categories, 10 items, 4 favorites, 5 orders.
-- `sql/queries.sql`: six read-only joined/aggregate/nested-query examples.
-- `tests/verify_database.py`: repeatable test on a disposable real MySQL instance; no Python third-party dependencies.
-- Root README: clean database installation and verification commands.
-
-The repository at A's commit contains requirements, architecture and ER documentation, but no authentication, server or frontend implementation. A's registration/login deliverable is therefore not yet verifiable from the repository. B does not claim the full app is runnable.
-
-## Database contract
-
-Use MySQL 8.0.16 or newer; tests ran on 8.0.46. Earlier 8.0 versions do not enforce CHECK constraints. Use strict SQL mode (the MySQL 8 default); the API must reject excess decimal precision rather than relying on MySQL rounding. Text uses utf8mb4; timestamps are naive DATETIME values: the application should consistently supply UTC. Seed timestamps are fixed fictional values.
-
-| Table | Identity | References and important values |
+| Table | Primary key | Main purpose |
 |---|---|---|
-| users | id | email unique; status active/suspended; password_hash stores library-generated hashes only |
-| categories | id | name unique |
-| items | id | seller_id → users; category_id → categories; price DECIMAL(10,2) |
-| favorites | (user_id, item_id) | both foreign keys; composite identity prevents repeat favorites |
-| orders | id | buyer_id → users; item_id → items; agreed_amount and pickup_location are snapshots |
+| users | id | Profiles, unique emails and password hashes |
+| categories | id | Unique category names |
+| items | id | Listings linked to a seller and category |
+| favorites | (user_id, item_id) | Saved listings without duplicates |
+| orders | id | Buyer/item references, agreed price, pickup location and order history |
 
-IDs are positive BIGINT values supplied by the application. There is no AUTO_INCREMENT in this schema. Backend owners must supply collision-resistant positive IDs within signed 64-bit range and retry a primary-key collision; do not use unprotected `MAX(id)+1`. Reserved seed IDs: users/categories 1–5, items 101–110, orders 1001–1005. Pass IDs as strings across JSON if they exceed JavaScript's safe integer range, or agree on a smaller allocation scheme before building APIs.
+The [ER diagram](er-diagram.md) explains cardinalities and how its favorites relationship becomes the fifth table.
 
-Every INSERT supplies created_at/updated_at where those columns exist. Every relevant UPDATE supplies updated_at. No trigger silently changes timestamps.
+## Storage contract
 
-| Domain | Allowed stored values |
+- **Version:** MySQL 8.0.16+; verified on 8.0.46. Keep strict SQL mode. Text uses utf8mb4.
+- **IDs:** application-supplied positive signed BIGINT values; no AUTO_INCREMENT. Use a collision-resistant allocation method and retry collisions, not unprotected `MAX(id)+1`. Pass IDs larger than JavaScript's safe integer range as strings, or agree on a smaller allocation scheme.
+- **Timestamps:** the application supplies created_at/updated_at, consistently in UTC, and updates updated_at after edits. No timestamp triggers are used.
+- **Money:** DECIMAL(10,2), non-negative; zero permits free items. The API must reject more than two decimal places rather than relying on rounding.
+- **Optional fields:** phone, avatar URL and image URL may be NULL.
+- **Required text:** names, item titles and item/pickup locations cannot be whitespace-only.
+
+| Field | Allowed values |
 |---|---|
 | users.status | active, suspended |
 | items.item_condition | new, like_new, good, fair |
 | items.status | available, reserved, sold, removed |
 | orders.status | pending, confirmed, completed, cancelled |
 
-`price` and `agreed_amount` allow zero (free items), reject negatives, and use exact decimal storage. Nullable optional attributes are phone/avatar/image URLs. Required names, titles and pickup/item locations cannot be whitespace-only.
+## Responsibility boundaries
 
-## What the database guarantees
+**The database enforces:** primary keys, case-insensitive email uniqueness, category-name uniqueness, valid foreign-key references, non-negative amounts, allowed statuses/conditions, and the composite key preventing duplicate favorites. Foreign keys block deletion of referenced records. Order snapshot values are independent of later item edits.
 
-- Primary keys prevent duplicate identities; the favorites composite key prevents repeat favorites.
-- Foreign keys reject missing users/categories/items and prevent deleting referenced parents.
-- Case-insensitive email uniqueness rejects Alice/alice duplicate accounts. The server must still trim/lowercase the stored email and validate the permitted domain.
-- CHECK constraints reject invalid status/condition labels and negative prices.
-- Order amount/location snapshots do not change when a listing is edited.
-- Any item with ANY order history cannot be hard-deleted through this schema.
+**The backend must enforce:** authentication, ownership, suspended-account checks, normalized lowercase emails and permitted email domains, password hashing, parameterized SQL, buyer ≠ seller, availability, and allowed status transitions. These rules are not guaranteed by the DDL.
 
-## What the backend must guarantee
+An item can have multiple historical orders, but only one pending/confirmed order at a time. C must implement and test that active-order rule and coordinated item/order updates, including simultaneous requests. Do not claim concurrent-order safety before that work is complete.
 
-The following are NOT enforced by the DDL or by a browser form. C/A must implement server-side checks:
+## Order workflow
 
-1. Authenticate users, reject suspended accounts, and enforce seller/buyer ownership on each write.
-2. Normalize/validate email; hash and verify passwords with the chosen authentication library; never store plaintext.
-3. A buyer cannot order their own listing; only available listings can receive orders.
-4. At most one pending/confirmed order exists per item. There is deliberately no `UNIQUE(orders.item_id)` because cancelled history must remain.
-5. Order creation/cancellation/completion must keep item and order states consistent, even for concurrent requests. A's architecture proposes transaction/locking behaviour, but it is not implemented by B and is outside the supplied taught SQL implementation scope. Do not claim concurrent-order safety until C implements/tests an agreed solution and the teaching-scope question is resolved.
-6. Enforce valid state transitions and prevent a normal listing edit from bypassing the order workflow.
-7. Validate prices to at most two decimal places and the supported range before sending SQL.
-8. Use parameter binding, not concatenated SQL, for user input.
-
-Proposed state contract for C:
-
-| Operation | Order state | Item state |
+| Action | Order transition | Item transition |
 |---|---|---|
-| Place order | new pending | available → reserved |
-| Seller confirms | pending → confirmed | remains reserved |
+| Buyer orders | New pending | available → reserved |
+| Seller confirms | pending → confirmed | Remains reserved |
 | Buyer cancels | pending → cancelled | reserved → available |
 | Seller cancels | pending/confirmed → cancelled | reserved → available |
 | Seller completes handover | confirmed → completed | reserved → sold |
 
-Completed/cancelled orders are terminal records. An item with a completed sale cannot be reopened. Only items without active orders or completed sales may be withdrawn as removed. These transitions are a backend contract proposal, not a claim that SQL CHECK validates transitions.
+Completed and cancelled orders are terminal. A sold item cannot be reopened. Items can be marked removed only when they have no active order or completed sale. Listing edits must not bypass this workflow.
 
-## Deletion policy and document discrepancies
+**Deletion:** any order history blocks hard deletion of its item. For an item without orders, the backend validates ownership/state and removes its favorites and item together. There is no automatic cascade. For a clear CRUD demonstration, create a new unused item, read it, change its price, then physically delete it. Marking an item removed is UPDATE, not DELETE.
 
-The existing documents disagree in three ways:
+## Seed data
 
-| Existing statement | Issue | B's explicit choice |
-|---|---|---|
-| ER says six entities but draws five | Counting mismatch | Implement the five named tables |
-| ER says zero/one order per item; requirements allow cancelled orders and one ACTIVE order | Lifetime uniqueness would block reordering after cancellation | One item can have multiple historical orders; C enforces at most one active order |
-| Architecture only blocks deletion after a completed order | A restrictive item FK also protects pending/cancelled history | Preserve ALL order history; mark such listings removed where workflow permits |
+All records are fictional and deterministic: **5 users, 5 categories, 10 items, 4 favorites, 5 orders**. IDs are users/categories 1–5, items 101–110 and orders 1001–1005.
 
-For an item with no order history, C first validates ownership and state, then removes favorites and the item as one coordinated backend operation. Foreign keys provide a last barrier against partial/orphaned deletion. B does not use automatic cascading deletion. Do not hide an ordinary UPDATE behind a DELETE label.
-
-For a clear CRUD video, create a new test item, read it, update its price, then actually DELETE it. Use a new item without order history. Use another seeded item to demonstrate order history.
-
-Do not redraw A's ER diagram until the user confirms B is satisfactory. The revised conceptual ER diagram will later need to match the agreed contract and the professor's taught notation. This handoff records discrepancies without editing that diagram.
-
-## Seed data guide
-
-| Data | Purpose |
+| Fixture | Demonstration |
 |---|---|
-| Alice (1), Bob (2), Cathy (3), David (4) | Buyer/seller scenarios |
-| Eva (5), suspended | Backend account-status scenario |
-| Item 101, textbook, HK$150 | Read/edit/search; two favorites |
-| Item 108, folders, HK$0 | Free item boundary |
-| Items 104/105 | Pending/confirmed orders, reserved status |
-| Item 106 | Completed order, sold status |
-| Item 109 | Removed status |
-| Item 110 | Cancelled history; available again, but cannot hard-delete |
-| Category Sports | Zero available items; LEFT JOIN / COUNT example |
-| Item 104 orders 1005 and 1001 | Cancelled historical order followed by current pending order |
+| Alice (1), Bob (2), Cathy (3), David (4) | Buyer/seller workflows |
+| Eva (5), suspended | Account-status checks |
+| Item 101, textbook at HK$150 | Search/edit; two favorites |
+| Item 108, free folders | Zero-price boundary |
+| Items 104/105 | Reserved items with pending/confirmed orders |
+| Item 106 | Sold item with completed order |
+| Item 109 | Removed listing |
+| Item 110 | Available again after cancellation; history prevents deletion |
+| Item 104, orders 1005 and 1001 | Cancelled history followed by a pending order |
+| Sports category | Zero-item aggregation case |
 
-All seed password hashes are `!`, an intentionally unusable marker. There are NO working demo login passwords yet. A must generate real hashes through the selected login library or create demo users through registration. Do not modify login code to accept `!`. Seed IDs can be used in database-only examples before authentication is implemented.
+Seed password fields contain `!`, an unusable marker. There are no working demo login credentials. A must generate hashes with the chosen authentication library or create users through registration; login code must never accept the marker.
 
-Expected report results: 6 available items; Bob has 2 favorites and 2 historical/current orders; category available counts are 2, 2, 2, 0, 0; popular item is 101. Seller 1's no-order-history listings are 101, 103, 109.
+Expected query results: 6 available items; Bob has 2 favorites and 2 orders; available-item counts by category ID are 2, 2, 2, 0, 0; the popular-item report returns 101; seller 1's listings without order history are 101, 103, 109.
 
-## Taught scope and presentation
+## Verification and course scope
 
-Course-facing explanation should focus on table definitions, primary/composite keys, foreign keys, INSERT/SELECT/UPDATE/DELETE, joins, GROUP BY/HAVING, and NOT EXISTS. These were found in the supplied notes (DDL p23, modification pp24–26, aggregation pp27–29, nested queries/joins pp30–33 and exercises pp36–41).
+On 2026-11-05, the schema, seed and six reports ran on isolated MySQL 8.0.46 and passed **37 checks**. Coverage includes foreign keys, duplicates, invalid values, retained order history, CRUD persistence across connections and unchanged order snapshots. The verifier starts a temporary loopback-only server, shuts it down and removes its own data directory. It does not test the unfinished API, login/UI or concurrent-order handling.
 
-A already requested unique emails and non-negative prices. `UNIQUE` and table-level `CHECK` are used here as explicit implementation constraints, but their exact DDL forms were not confirmed as taught in the supplied notes (p35 discusses assertions). Treat them as a small scope item to clear with the teaching team before presenting them as taught knowledge. MySQL engine/charset/collation settings are setup details, not claimed advanced features. No transaction/locking SQL, triggers, stored procedures or other advanced mechanisms are added by B.
+The course-facing explanation should focus on taught table definitions, primary/composite keys, foreign keys, CRUD, joins, GROUP BY/HAVING and nested queries. The supplied notes cover these on pp23–33 and pp36–41. The exact `UNIQUE` and table-level `CHECK` forms used to implement the requirements were not confirmed in those notes; clarify that small scope point before presenting them as taught syntax. No transaction/locking SQL, triggers or stored procedures are introduced by B.
 
-The current repository scope has orders/favorites, not the earlier proposed wishlist feature. B follows the repository's agreed tables; adding new product features requires the team's design decision.
+## Presentation brief
 
-## Validation
+> Our database has five tables: users, categories, items, favorites and orders. Each item references a seller and category. Favorites uses a composite key to prevent duplicate saves. Orders preserve the agreed price and pickup location. Foreign keys protect these records from accidental deletion. We provide schema and seed scripts, verified with 37 checks on a fresh MySQL instance.
 
-On 2026-11-05, schema, seed and every report executed successfully on isolated MySQL 8.0.46. The automated script passed 37 checks, including counts, foreign keys, duplicates, invalid prices/statuses, retained order history, CRUD persistence across connections and unchanged order snapshots. It starts a fresh temporary server bound only to loopback on a random port, shuts it down, and deletes only its own temporary data directory.
-
-This is database verification, not an end-to-end app test, authentication test, or concurrent-order test. C/E must add endpoint and concurrent-order checks when their implementation exists. A/C/E should also rehearse the README installation on their own machines.
-
-## B's 35-second presentation draft
-
-“Our database has five tables: users, categories, items, favorites and orders. Each item references an existing seller and category. Favorites uses a composite primary key, so a user cannot save the same item twice. Orders keep the agreed price and pickup location as historical values. Foreign keys protect these records from accidental deletion. We provide reproducible schema and seed scripts, and verified the constraints and CRUD operations with 37 checks on a fresh MySQL instance.”
-
-Time this aloud at the presenter's own pace. Keep SQL and schema legible; B explains data/constraints while C explains write endpoints and order workflows.
-
-## Why this supports high marks
-
-- Reproducibility (30 marks total): source SQL, a deterministic dataset, exact setup commands and repeatable verification reduce installation ambiguity. Full application run instructions remain A/C/D/E's integration work.
-- ER explanation (10): the schema provides concrete identities and relationships for the later corrected diagram.
-- SQL explanation (15): actual runnable CRUD/join/aggregate/nested queries support specific explanations.
-- CRUD video (25): the documented new-item scenario distinguishes physical DELETE from status UPDATE and demonstrates saved values.
-- Functionality/design and delivery (20 combined): explicit contracts and a short B script support consistent group explanations.
-
-These are opportunities to satisfy the rubric, not a guarantee of 98–100. A's diagram, backend, frontend, full-app reproduction and final presentation are still outstanding group work.
+Rehearse for approximately 35 seconds. This work supports reproducibility (30 marks), the ER explanation (10), SQL explanation (15) and CRUD video (25). Full application setup, interface functionality and group delivery remain necessary; the database alone does not guarantee a particular mark.
