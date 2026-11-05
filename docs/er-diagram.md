@@ -6,7 +6,7 @@
 
 ## Layout revision
 
-The diagram now uses 34-pixel attribute text (previously 24) and 44-pixel entity text (previously 32), on a tighter 2150 x 1470 canvas (previously 3000 x 2300). Entity groups sit closer together, connectors use direct routes, SVG strokes have rounded caps/joins, and the PNG is rendered at 3x resolution before anti-aliased downsampling. The image contains only entity, relationship and attribute labels, with the required ER symbols. Title, legend and explanatory prose are intentionally outside the image.
+The diagram now uses 40-pixel bold attribute text, 44-pixel bold and underlined primary keys, and 46-pixel bold entity text (originally 24-pixel attributes and 32-pixel entities), on a tighter 2150 x 1470 canvas (previously 3000 x 2300). Entity groups sit closer together, connectors use direct routes, SVG strokes have rounded caps/joins, and the PNG is rendered at 3x resolution before anti-aliased downsampling. The image contains only entity, relationship and attribute labels, with the required ER symbols. Title, legend and explanatory prose are intentionally outside the image.
 
 The current revision branch is `improve-er-diagram-layout`. The earlier `docs/chen-er-diagram` name meant documentation using Chen ER notation; it was not a teammate name.
 
@@ -91,12 +91,12 @@ python -m pip install Pillow
 python scripts/render_er_diagram.py --png
 ```
 
-PNG rendering uses Arial on Windows or DejaVu Sans on Linux; install one of those fonts if needed. SVG remains usable without either installed locally (the viewer supplies a sans-serif fallback). The committed SVG/PNG are ready to view without running the script. No PDF renderer, Graphviz, Mermaid extension, browser, or external image service is required.
+PNG rendering uses Arial Bold on Windows or DejaVu Sans Bold on Linux; install one of those fonts if needed. SVG remains usable without either installed locally (the viewer supplies a sans-serif fallback). The committed SVG/PNG are ready to view without running the script. No PDF renderer, Graphviz, Mermaid extension, browser, or external image service is required.
 
 ## Checks and presentation use
 
 - Visually inspected the full rendered PNG and corrected overlapping ellipses/labels.
-- Verified four entity rectangles, five relationship diamonds, 29 attribute ellipses and four underlined primary keys.
+- Verified four entity rectangles, five relationship diamonds, 29 attribute ellipses and four bold, underlined primary keys.
 - Verified all 35 columns in `sql/schema.sql` are accounted for by attributes or relationship mappings.
 - Verified relationships agree with NOT NULL foreign keys and the existing seed's order history.
 - Database SQL and its 37-check test suite are unchanged by this documentation branch.

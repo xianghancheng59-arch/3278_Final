@@ -26,7 +26,7 @@ def line(points, color=BLACK, width=2, arrow=False):
 
 
 def text(x,y,label,size=25,underline=False,color=BLACK):
-    parts.append(f'<text x="{x}" y="{y}" text-anchor="middle" dominant-baseline="central" font-family="Arial, Helvetica, sans-serif" font-size="{size}" fill="{color}"'+(' text-decoration="underline"' if underline else '')+f'>{escape(label)}</text>')
+    parts.append(f'<text x="{x}" y="{y}" text-anchor="middle" dominant-baseline="central" font-family="Arial, Helvetica, sans-serif" font-size="{size}" font-weight="700" fill="{color}"'+(' text-decoration="underline"' if underline else '')+f'>{escape(label)}</text>')
     primitives.append(('text',(x,y),label,size,underline,color))
 
 
@@ -46,10 +46,10 @@ def attr(entity,center,label,key=False):
     ex,ey=entity; x,y=center
     dx=x-ex; dy=y-ey
     rscale=1/max(abs(dx)/130,abs(dy)/45)
-    rx=65 if key else max(75,len(label)*9+14); ry=32
+    rx=70 if key else max(90,len(label)*12+24); ry=36
     escale=1/math.sqrt((dx/rx)**2+(dy/ry)**2)
     line([(ex+dx*rscale,ey+dy*rscale),(x-dx*escale,y-dy*escale)],RED)
-    shape('ellipse',x,y,rx,ry,label,34,key)
+    shape('ellipse',x,y,rx,ry,label,44 if key else 40,key)
 
 
 def fan(entity,labels,angles,radius=500):
@@ -74,7 +74,7 @@ def build():
 
     line([(710,435),(895,220)])
     line([(1135,220),(1260,435)])
-    line([(1015,160),(1015,142)],RED)
+    line([(1015,160),(1015,146)],RED)
 
     line([(580,760),(580,505)],arrow=True)
     double((580,880),(650,1065))
@@ -86,27 +86,27 @@ def build():
     line([(1390,1110),(1580,1190)],arrow=True)
 
     for pos,label in [(U,'Users'),(I,'Items'),(O,'Orders'),(C,'Categories')]:
-        shape('rect',*pos,130,45,label,44)
+        shape('rect',*pos,130,45,label,46)
     for pos,label in [((1015,460),'sells'),((1015,220),'favorites'),((580,820),'places'),((1015,1110),'for_item'),((1390,1050),'classifies')]:
-        shape('diamond',*pos,120,60,label,36)
-    shape('ellipse',1015,110,110,32,'created_at',34)
+        shape('diamond',*pos,120,60,label,38)
+    shape('ellipse',1015,110,144,36,'created_at',40)
 
     # Compact, manually placed fans: large type, short spokes, no hidden attributes.
     for name,xy in [
         ('id',(690,180)),('full_name',(480,140)),('email',(250,190)),
-        ('password_hash',(170,300)),('contact_phone',(160,430)),
-        ('avatar_url',(150,560)),('status',(140,680)),
-        ('created_at',(180,790)),('updated_at',(200,900))]:
+        ('password_hash',(210,340)),('contact_phone',(210,430)),
+        ('avatar_url',(170,560)),('status',(140,680)),
+        ('created_at',(180,790)),('updated_at',(350,900))]:
         attr(U,xy,name,name=='id')
     for name,xy in [
         ('id',(1320,150)),('title',(1530,130)),('description',(1760,180)),
         ('price',(1920,300)),('item_condition',(1930,430)),('status',(1960,560)),
         ('location',(1930,690)),('image_url',(1860,820)),
-        ('created_at',(1690,910)),('updated_at',(1520,970))]:
+        ('created_at',(1720,910)),('updated_at',(1570,990))]:
         attr(I,xy,name,name=='id')
     for name,xy in [
-        ('id',(180,1030)),('agreed_amount',(190,1180)),('pickup_location',(290,1390)),
-        ('status',(650,1430)),('created_at',(1000,1370)),('updated_at',(1100,1220))]:
+        ('id',(180,1030)),('agreed_amount',(210,1180)),('pickup_location',(290,1390)),
+        ('status',(650,1420)),('created_at',(1000,1370)),('updated_at',(1100,1220))]:
         attr(O,xy,name,name=='id')
     for name,xy in [('id',(1890,1060)),('name',(1970,1190)),('created_at',(1900,1360))]:
         attr(C,xy,name,name=='id')
@@ -119,9 +119,9 @@ def png(path):
     canvas=Image.new('RGB',(W*scale,H*scale),'white');d=ImageDraw.Draw(canvas)
     def coords(points): return [(x*scale,y*scale) for x,y in points]
     def font(size):
-        for f in ['C:/Windows/Fonts/arial.ttf','/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf']:
+        for f in ['C:/Windows/Fonts/arialbd.ttf','/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf']:
             if Path(f).is_file():return ImageFont.truetype(f,size*scale)
-        raise SystemExit('PNG requires Arial or DejaVu Sans; SVG remains available.')
+        raise SystemExit('PNG requires Arial Bold or DejaVu Sans Bold; SVG remains available.')
     for p in primitives:
         if p[0]=='line':d.line(coords(p[1]),fill=p[2],width=p[3]*scale,joint='curve')
         elif p[0]=='polygon':d.polygon(coords(p[1]),fill=p[2])
@@ -130,7 +130,7 @@ def png(path):
             d.text((xy[0]*scale,xy[1]*scale),label,font=f,fill=color,anchor='mm')
             if under:
                 length=d.textlength(label,font=f)/scale
-                d.line(coords([(xy[0]-length/2,xy[1]+size*.48),(xy[0]+length/2,xy[1]+size*.48)]),fill=color,width=2*scale)
+                d.line(coords([(xy[0]-length/2,xy[1]+size*.48),(xy[0]+length/2,xy[1]+size*.48)]),fill=color,width=3*scale)
         else:
             _,kind,(x,y,rx,ry)=p;b=((x-rx)*scale,(y-ry)*scale,(x+rx)*scale,(y+ry)*scale)
             if kind=='rect':d.rectangle(b,fill='white',outline=RED,width=2*scale)
