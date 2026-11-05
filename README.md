@@ -1,51 +1,37 @@
 # CampusSwap
 
-A full-stack campus second-hand marketplace with user authentication, item listings, search, favorites, and order management backed by a relational database.
+A campus second-hand marketplace for listing items, finding bargains, saving favorites, and arranging in-person exchanges.
 
-## Project scope
+**Current status:** requirements, database implementation and ER design are available. Authentication, API and frontend implementation are pending; the full application cannot be started yet.
 
-CampusSwap helps students list, discover, and exchange second-hand items on campus. The MVP demonstrates database-backed create, read, update, and delete operations for listings, favorites, and orders.
+## Project guide
 
-The design is documented before implementation so that each team member can build against the same data model and API boundary:
+| Document | Contents |
+|---|---|
+| [Requirements](docs/requirements.md) | Features, scope and acceptance checklist |
+| [ER diagram](docs/er-diagram.md) | Final diagram, relationships and editable source |
+| [Database guide](docs/database.md) | Tables, constraints, seed data and backend handoff |
+| [Architecture](docs/architecture.md) | Application layers and API boundaries |
 
-- [Requirements and MVP acceptance checklist](docs/requirements.md)
-- [ER diagram and relationship explanation](docs/er-diagram.md)
-- [System architecture and API boundary](docs/architecture.md)
+Planned features: account registration/login, listing CRUD, search/filtering, favorites, and single-item orders. Online payment, shipping and live chat are outside the MVP.
 
-## Planned core features
+## Database setup
 
-- User registration, login, logout, and profile updates
-- Listing creation, browsing, search, editing, and deletion
-- Category, condition, price, and status filters
-- Favorites for logged-in users
-- Single-item order flow with seller and buyer status updates
+Requires a running **MySQL 8.0.16+** server and client; tested on **8.0.46**. Keep the default strict SQL mode. Use your own local MySQL account and credentials.
 
-## Development status
-
-Requirements and system design are documented. Member B has added the database implementation below; authentication, API and frontend implementation are not yet present.
-
-## Database implementation (Member B)
-
-The repository now includes the five-table MySQL schema, fictional seed data, read-only report queries, a database handoff, and disposable-server verification. Authentication, API and UI implementation are still outstanding; there is not yet an application start command.
-
-- [Database contract, rules, seed guide and B presentation](docs/database.md)
-- [Schema](sql/schema.sql), [seed](sql/seed.sql), [reports](sql/queries.sql)
-- [Database verification script](tests/verify_database.py)
-
-### Create and populate a fresh database
-
-Prerequisite: a running MySQL **8.0.16+** server and its command-line client; tested on 8.0.46. Use a local MySQL account with permission to create a database and tables. Keep the server's default strict SQL mode. Passwords below are entered interactively, never committed.
-
-In PowerShell, from this repository's root:
+Open a terminal in the repository root. In Windows PowerShell:
 
 ```powershell
-Set-Location D:\GitHub_Repositories\3278_Final
 & 'C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe' --host=127.0.0.1 --user=root --password --default-character-set=utf8mb4
 ```
 
-Adjust the installation path/account to your machine. On macOS/Linux, from the repository root, use `mysql --host=127.0.0.1 --user=root --password --default-character-set=utf8mb4`.
+Adjust the installation path/account as needed. With mysql on PATH, including macOS/Linux:
 
-At the **mysql prompt**, execute the following commands one at a time. Stop on any error:
+```sh
+mysql --host=127.0.0.1 --user=root --password --default-character-set=utf8mb4
+```
+
+At the **mysql prompt**, run these commands one at a time and stop on errors:
 
 ```sql
 CREATE DATABASE campusswap CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
@@ -55,35 +41,28 @@ SOURCE sql/seed.sql;
 SOURCE sql/queries.sql;
 ```
 
-If the database already exists, do not continue into it blindly. Choose a fresh name, such as `campusswap_review`, for both CREATE DATABASE and USE. Scripts do not drop existing tables or overwrite existing records. Re-running seed.sql against populated tables should produce duplicate-key errors; it is intentionally a fresh-install script.
+Use a fresh database. If `campusswap` already exists, choose another name in both CREATE DATABASE and USE. To reset/rehearse, create another empty database and repeat these steps. The scripts do not drop tables or overwrite data; repeating the seed on populated tables produces duplicate-key errors.
 
-Expected data: **5 users, 5 categories, 10 items, 4 favorites, 5 orders**. Reports include six available items, two favorites for Bob, and the Sports category with zero items. Connection settings for the future backend are host `127.0.0.1`, your server port (normally `3306`), the database name you created, and your own MySQL credentials. They must be supplied through local environment configuration when the backend is implemented. No database credentials are included in this repository.
+Expected dataset: **5 users, 5 categories, 10 items, 4 favorites and 5 orders**. Reports show six available items, two favorites for Bob, and an empty Sports category.
 
-**Seed users cannot log in yet:** their password field contains an unusable marker. A must create valid hashes using the actual authentication library. The repository currently has no login implementation; no demo password is claimed.
+Seed users have an unusable password marker (`!`), so they cannot log in. The authentication implementation must create real password hashes. Future backend configuration must supply the host, port (normally 3306), selected database, and credentials through local environment settings.
 
-For development reset/rehearsal, create a new explicitly named empty database and rerun the same schema/seed steps. Update the backend database selection when a backend exists. Deleting an old database is optional and must be deliberate; these scripts never reset your existing database automatically.
+## Database verification
 
-### Repeat B's database checks
-
-Requires Python 3.9+ and locally installed MySQL client **and server** binaries. No Python package installation is needed. On Windows:
+Requires Python 3.9+ and installed MySQL server/client binaries; no Python packages are needed:
 
 ```powershell
 python tests/verify_database.py --mysql-bin 'C:\Program Files\MySQL\MySQL Server 8.0\bin'
 ```
 
-The script creates its own temporary data directory and MySQL server on a random loopback port. It does not connect to the normal server, request its password, or use its databases. On completion it shuts down that server and removes its temporary files. Expected final output: `PASS: 37 checks; schema, seed and report SQL executed on disposable MySQL.`
+The script starts an isolated temporary MySQL server on a random loopback port, runs the SQL and **37 checks**, then shuts down and cleans up. It does not use your existing databases. Coverage includes keys, invalid data, order history and CRUD persistence; API, authentication and concurrent orders are not yet tested.
 
-This verifies database SQL/constraints, not the unfinished login/API/UI or concurrent order handling. Full application installation/start commands must be added by the feature owners once they choose and implement the web stack.
+## Troubleshooting
 
-### Common setup issues
+- **Cannot connect:** start MySQL and check the host/port. The automated verifier starts its own server.
+- **Access denied:** check your MySQL credentials and database-creation privileges. Seed users are application records, not MySQL accounts.
+- **Cannot open SOURCE file:** start mysql from the repository root.
+- **Database/table already exists:** stop and use a fresh database.
+- **CHECK constraints unsupported:** run `SELECT VERSION();` and use MySQL 8.0.16+.
 
-- **mysql is not found:** use the full path above or your actual MySQL client location.
-- **Access denied:** use your local MySQL account/password and check its privileges; seed identities are application users, not MySQL server accounts.
-- **Cannot connect:** start your existing MySQL server and check its port before following the manual setup. The automated verifier starts its own isolated server.
-- **Cannot open SOURCE file:** launch mysql from this repository root, not from the sql folder.
-- **Table/database already exists:** stop and select a fresh database; do not mix the seed into a teammate's populated database.
-- **CHECK syntax unsupported / not enforced:** verify server version with `SELECT VERSION();`; use MySQL 8.0.16 or newer.
-
-### Known design reconciliation
-
-The revised [classroom ER diagram](docs/er-diagram.md) distinguishes historical orders from the **at most one active order** business rule, preserving cancelled history. The database allows multiple historical orders; C must enforce the active-order and state-transition rules in the backend. All order references prevent hard-deletion of their item. See the handoff for the exact deletion policy and the ER document for cardinalities, complete attribute mapping, SVG/PNG exports and editable drawing code.
+Full application installation and start commands will be added when the web stack is implemented.
