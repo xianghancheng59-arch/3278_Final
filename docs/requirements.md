@@ -54,7 +54,7 @@ The same account can act as a buyer and a seller. There is no separate administr
 - A user cannot order their own listing.
 - Only available listings can receive a new order.
 - An item marked `sold` cannot be ordered again.
-- Hard-deleting a listing with no order history removes its favorites first. Any order history restricts hard deletion of the listing; use the removed status only where the order workflow permits it.
+- Deleting a listing removes its favorites; order history is retained with a restricted listing reference where possible.
 
 ## Non-functional requirements
 

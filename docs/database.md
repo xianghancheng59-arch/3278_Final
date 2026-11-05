@@ -1,6 +1,6 @@
 # Database guide — Member B
 
-The database implementation consists of [schema.sql](../sql/schema.sql), [seed.sql](../sql/seed.sql), [queries.sql](../sql/queries.sql) and the [verification script](../tests/verify_database.py). Follow the [README](../README.md#database-setup) for installation.
+The database implementation consists of [schema.sql](../sql/schema.sql), [seed.sql](../sql/seed.sql), [queries.sql](../sql/queries.sql) and the [verification script](../tests/verify_database.py). Follow the [setup guide](database-setup.md) for installation.
 
 ## Tables
 
@@ -12,7 +12,7 @@ The database implementation consists of [schema.sql](../sql/schema.sql), [seed.s
 | favorites | (user_id, item_id) | Saved listings without duplicates |
 | orders | id | Buyer/item references, agreed price, pickup location and order history |
 
-The [ER diagram](er-diagram.md) explains cardinalities and how its favorites relationship becomes the fifth table.
+This guide documents B's implemented tables and rules. The original team design documents are preserved separately.
 
 ## Storage contract
 
