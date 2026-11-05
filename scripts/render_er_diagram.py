@@ -8,7 +8,7 @@ from html import escape
 import argparse
 import math
 
-W, H = 3000, 2300
+W, H = 2150, 1470
 RED = '#e52b20'
 BLACK = '#171717'
 parts = []
@@ -16,7 +16,7 @@ primitives = []
 
 
 def line(points, color=BLACK, width=2, arrow=False):
-    parts.append(f'<polyline points="{" ".join(f"{x},{y}" for x,y in points)}" fill="none" stroke="{color}" stroke-width="{width}"/>')
+    parts.append(f'<polyline points="{" ".join(f"{x},{y}" for x,y in points)}" fill="none" stroke="{color}" stroke-width="{width}" stroke-linecap="round" stroke-linejoin="round"/>')
     primitives.append(('line', points, color, width))
     if arrow:
         x,y=points[-1]; a,b=points[-2]; angle=math.atan2(y-b,x-a)
@@ -45,11 +45,11 @@ def shape(kind,x,y,rx,ry,label,size=30,key=False):
 def attr(entity,center,label,key=False):
     ex,ey=entity; x,y=center
     dx=x-ex; dy=y-ey
-    rscale=1/max(abs(dx)/110,abs(dy)/45)
-    rx=60 if key else max(85,len(label)*7.4); ry=32
+    rscale=1/max(abs(dx)/130,abs(dy)/45)
+    rx=65 if key else max(75,len(label)*9+14); ry=32
     escale=1/math.sqrt((dx/rx)**2+(dy/ry)**2)
     line([(ex+dx*rscale,ey+dy*rscale),(x-dx*escale,y-dy*escale)],RED)
-    shape('ellipse',x,y,rx,ry,label,24,key)
+    shape('ellipse',x,y,rx,ry,label,34,key)
 
 
 def fan(entity,labels,angles,radius=500):
@@ -67,82 +67,76 @@ def double(a,b):
 
 def build():
     parts.clear();primitives.clear()
-    text(1500,55,'CampusSwap - Conceptual E-R Diagram',44)
-    text(1500,110,'Classroom notation aligned with Assignment 1, Question 1',25)
-    U=(650,700); I=(1950,700); O=(650,1620); C=(2480,1640)
+    U=(580,460); I=(1390,460); O=(650,1110); C=(1710,1190)
 
-    # Relationships first, so entity/diamond outlines remain crisp.
-    line([(1180,700),(760,700)],arrow=True) # sells -> user (one)
-    double((1420,700),(1840,700))
-    text(995,665,'seller: 0..N items',22)
-    text(1625,665,'each item: 1 seller',22)
+    line([(895,460),(710,460)],arrow=True)
+    double((1135,460),(1260,460))
 
-    line([(760,670),(880,540),(1050,350),(1180,350)])
-    line([(1420,350),(1550,350),(1720,540),(1840,670)])
-    text(1010,490,'0..N',22)
-    text(1590,490,'0..N',22)
-    line([(1300,290),(1300,242)],RED)
+    line([(710,435),(895,220)])
+    line([(1135,220),(1260,435)])
+    line([(1015,160),(1015,142)],RED)
 
-    line([(650,1115),(650,745)],arrow=True)
-    double((650,1245),(650,1575))
-    text(790,1000,'buyer: 0..N orders',22)
-    text(820,1390,'each order: 1 buyer',22)
+    line([(580,760),(580,505)],arrow=True)
+    double((580,880),(650,1065))
 
-    double((760,1620),(1180,1620))
-    line([(1420,1620),(1640,1620),(1750,1180),(1750,820),(1840,730)],arrow=True)
-    text(980,1585,'each order: 1 item',22)
-    text(1500,1745,'item: 0..N historical orders',22)
+    double((780,1110),(895,1110))
+    line([(1135,1110),(1260,490)],arrow=True)
 
-    double((1950,745),(1950,1235))
-    line([(1950,1365),(1950,1510),(2370,1640)],arrow=True)
-    text(2240,1330,'each item: 1 category',22)
-    text(2190,1470,'category: 0..N items',22)
+    double((1390,505),(1390,990))
+    line([(1390,1110),(1580,1190)],arrow=True)
 
     for pos,label in [(U,'Users'),(I,'Items'),(O,'Orders'),(C,'Categories')]:
-        shape('rect',*pos,110,45,label,32)
-    for pos,label in [((1300,700),'sells'),((1300,350),'favorites'),((650,1180),'places'),((1300,1620),'for_item'),((1950,1300),'classifies')]:
-        shape('diamond',*pos,120,65,label,29)
-    shape('ellipse',1300,210,125,32,'created_at',24)
+        shape('rect',*pos,130,45,label,44)
+    for pos,label in [((1015,460),'sells'),((1015,220),'favorites'),((580,820),'places'),((1015,1110),'for_item'),((1390,1050),'classifies')]:
+        shape('diamond',*pos,120,60,label,36)
+    shape('ellipse',1015,110,110,32,'created_at',34)
 
-    # Every non-FK SQL attribute is shown; FKs are represented by relationships.
-    fan(U,['updated_at','created_at','status','avatar_url','contact_phone','password_hash','email','full_name','id'],
-        [125,143,161,179,197,215,233,251,269])
-    fan(I,['id','title','description','price','item_condition','status','location','image_url','created_at','updated_at'],
-        [-89,-71,-53,-35,-17,1,19,37,55,73],530)
-    fan(O,['updated_at','created_at','status','pickup_location','agreed_amount','id'],
-        [35,63,91,119,147,175],490)
-    attr(C,(2700,1440),'id',True)
-    attr(C,(2800,1640),'name')
-    attr(C,(2670,1850),'created_at')
-
-    # Legend at full width, outside the diagram's graph.
-    line([(100,2200),(2900,2200)],'#cccccc',1)
-    text(1500,2240,'Rectangle = entity  |  Diamond = relationship  |  Ellipse = attribute  |  Underline = primary key',23)
-    text(1500,2280,'Arrow toward entity = at most one  |  Double line = total participation  |  Single line = partial participation',23)
+    # Compact, manually placed fans: large type, short spokes, no hidden attributes.
+    for name,xy in [
+        ('id',(690,180)),('full_name',(480,140)),('email',(250,190)),
+        ('password_hash',(170,300)),('contact_phone',(160,430)),
+        ('avatar_url',(150,560)),('status',(140,680)),
+        ('created_at',(180,790)),('updated_at',(200,900))]:
+        attr(U,xy,name,name=='id')
+    for name,xy in [
+        ('id',(1320,150)),('title',(1530,130)),('description',(1760,180)),
+        ('price',(1920,300)),('item_condition',(1930,430)),('status',(1960,560)),
+        ('location',(1930,690)),('image_url',(1860,820)),
+        ('created_at',(1690,910)),('updated_at',(1520,970))]:
+        attr(I,xy,name,name=='id')
+    for name,xy in [
+        ('id',(180,1030)),('agreed_amount',(190,1180)),('pickup_location',(290,1390)),
+        ('status',(650,1430)),('created_at',(1000,1370)),('updated_at',(1100,1220))]:
+        attr(O,xy,name,name=='id')
+    for name,xy in [('id',(1890,1060)),('name',(1970,1190)),('created_at',(1900,1360))]:
+        attr(C,xy,name,name=='id')
 
 
 def png(path):
     from PIL import Image,ImageDraw,ImageFont
-    canvas=Image.new('RGB',(W,H),'white');d=ImageDraw.Draw(canvas)
+    # Supersample all strokes and glyphs, then downsample for smooth slide images.
+    scale=3
+    canvas=Image.new('RGB',(W*scale,H*scale),'white');d=ImageDraw.Draw(canvas)
+    def coords(points): return [(x*scale,y*scale) for x,y in points]
     def font(size):
         for f in ['C:/Windows/Fonts/arial.ttf','/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf']:
-            if Path(f).is_file():return ImageFont.truetype(f,size)
+            if Path(f).is_file():return ImageFont.truetype(f,size*scale)
         raise SystemExit('PNG requires Arial or DejaVu Sans; SVG remains available.')
     for p in primitives:
-        if p[0]=='line':d.line(p[1],fill=p[2],width=p[3])
-        elif p[0]=='polygon':d.polygon(p[1],fill=p[2])
+        if p[0]=='line':d.line(coords(p[1]),fill=p[2],width=p[3]*scale,joint='curve')
+        elif p[0]=='polygon':d.polygon(coords(p[1]),fill=p[2])
         elif p[0]=='text':
             _,xy,label,size,under,color=p;f=font(size)
-            d.text(xy,label,font=f,fill=color,anchor='mm')
+            d.text((xy[0]*scale,xy[1]*scale),label,font=f,fill=color,anchor='mm')
             if under:
-                length=d.textlength(label,font=f)
-                d.line([(xy[0]-length/2,xy[1]+size*.48),(xy[0]+length/2,xy[1]+size*.48)],fill=color,width=2)
+                length=d.textlength(label,font=f)/scale
+                d.line(coords([(xy[0]-length/2,xy[1]+size*.48),(xy[0]+length/2,xy[1]+size*.48)]),fill=color,width=2*scale)
         else:
-            _,kind,(x,y,rx,ry)=p;b=(x-rx,y-ry,x+rx,y+ry)
-            if kind=='rect':d.rectangle(b,fill='white',outline=RED,width=2)
-            elif kind=='ellipse':d.ellipse(b,fill='white',outline=RED,width=2)
-            else:d.polygon([(x-rx,y),(x,y-ry),(x+rx,y),(x,y+ry)],fill='white',outline=RED,width=2)
-    canvas.save(path)
+            _,kind,(x,y,rx,ry)=p;b=((x-rx)*scale,(y-ry)*scale,(x+rx)*scale,(y+ry)*scale)
+            if kind=='rect':d.rectangle(b,fill='white',outline=RED,width=2*scale)
+            elif kind=='ellipse':d.ellipse(b,fill='white',outline=RED,width=2*scale)
+            else:d.polygon(coords([(x-rx,y),(x,y-ry),(x+rx,y),(x,y+ry)]),fill='white',outline=RED,width=2*scale)
+    canvas.resize((W,H),Image.Resampling.LANCZOS).save(path)
 
 
 if __name__=='__main__':
@@ -151,7 +145,7 @@ if __name__=='__main__':
     args=parser.parse_args()
     out=Path(__file__).resolve().parents[1]/'docs'/'diagrams';out.mkdir(parents=True,exist_ok=True)
     build()
-    svg='<svg xmlns="http://www.w3.org/2000/svg" width="3000" height="2300" viewBox="0 0 3000 2300">\n<title>CampusSwap conceptual ER diagram</title>\n<desc>Four entity sets and five relationships, including favorites mapped to the fifth SQL table. See docs/er-diagram.md for cardinalities and schema mapping.</desc>\n<rect width="100%" height="100%" fill="white"/>\n'+'\n'.join(parts)+'\n</svg>\n'
+    svg='<svg xmlns="http://www.w3.org/2000/svg" width="2150" height="1470" viewBox="0 0 2150 1470">\n<title>CampusSwap conceptual ER diagram</title>\n<desc>Four entity sets and five relationships, including favorites mapped to the fifth SQL table. See docs/er-diagram.md for cardinalities and schema mapping.</desc>\n<rect width="100%" height="100%" fill="white"/>\n'+'\n'.join(parts)+'\n</svg>\n'
     (out/'campusswap-chen.svg').write_text(svg,encoding='utf-8')
     if args.png:png(out/'campusswap-chen.png')
     print(out)

@@ -4,6 +4,12 @@
 
 [Open the vector SVG](diagrams/campusswap-chen.svg) · [PNG for slides](diagrams/campusswap-chen.png) · [Editable Python source](../scripts/render_er_diagram.py)
 
+## Layout revision
+
+The diagram now uses 34-pixel attribute text (previously 24) and 44-pixel entity text (previously 32), on a tighter 2150 x 1470 canvas (previously 3000 x 2300). Entity groups sit closer together, connectors use direct routes, SVG strokes have rounded caps/joins, and the PNG is rendered at 3x resolution before anti-aliased downsampling. The image contains only entity, relationship and attribute labels, with the required ER symbols. Title, legend and explanatory prose are intentionally outside the image.
+
+The current revision branch is `improve-er-diagram-layout`. The earlier `docs/chen-er-diagram` name meant documentation using Chen ER notation; it was not a teammate name.
+
 ## Reference and design approach
 
 The notation follows **COMP3278 Assignment 1, Question 1** and the supplied **Suggested Answer — Question 1** (solution PDF page 1): red entity/relationship/attribute outlines, black relationship lines, white background, underlined keys, arrows toward the one side, and double lines for total participation. The supplied PDFs are classroom references and are not redistributed in this repository.
@@ -24,7 +30,7 @@ The diagram is a **conceptual ER model**, not a list of SQL tables with crow's-f
 | Double relationship line | Total participation: every entity on that side participates |
 | Single relationship line | Partial participation, unless further business rules restrict it |
 
-Attribute connector lines do not encode participation. Labels beside relationships are plain-language checks of their meaning. For example, `each item: 1 seller` combines Items' total participation in sells and the arrow to Users. `seller: 0..N items` means a user can exist without selling anything.
+Attribute connector lines do not encode participation. Items' total participation in sells and the arrow to Users together mean each item has exactly one seller. Users' partial participation permits a user with no listings. Explanations and cardinality prose are kept here rather than inside the image.
 
 ## Cardinalities and participation
 
