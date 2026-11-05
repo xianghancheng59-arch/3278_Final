@@ -1,75 +1,98 @@
-# CampusSwap ER diagram
+# CampusSwap E-R diagram — classroom notation
 
-The MVP uses six entities. A user may sell many items, buy many items, and favorite many items. A category groups many items. Each item may have zero or one order because the MVP treats each listing as a single physical item.
+![CampusSwap conceptual E-R diagram](diagrams/campusswap-chen.svg)
 
-```mermaid
-erDiagram
-    USERS ||--o{ ITEMS : sells
-    CATEGORIES ||--o{ ITEMS : contains
-    USERS ||--o{ FAVORITES : creates
-    ITEMS ||--o{ FAVORITES : receives
-    USERS ||--o{ ORDERS : places
-    ITEMS ||--o| ORDERS : "is ordered in"
+[Open the vector SVG](diagrams/campusswap-chen.svg) · [PNG for slides](diagrams/campusswap-chen.png) · [Editable Python source](../scripts/render_er_diagram.py)
 
-    USERS {
-        bigint id PK
-        varchar full_name
-        varchar email UK
-        varchar password_hash
-        varchar contact_phone
-        varchar avatar_url
-        varchar status
-        datetime created_at
-        datetime updated_at
-    }
+## Reference and design approach
 
-    CATEGORIES {
-        bigint id PK
-        varchar name UK
-        datetime created_at
-    }
+The notation follows **COMP3278 Assignment 1, Question 1** and the supplied **Suggested Answer — Question 1** (solution PDF page 1): red entity/relationship/attribute outlines, black relationship lines, white background, underlined keys, arrows toward the one side, and double lines for total participation. The supplied PDFs are classroom references and are not redistributed in this repository.
 
-    ITEMS {
-        bigint id PK
-        bigint seller_id FK
-        bigint category_id FK
-        varchar title
-        text description
-        decimal price
-        varchar item_condition
-        varchar status
-        varchar location
-        varchar image_url
-        datetime created_at
-        datetime updated_at
-    }
+This adapts the answer's notation to CampusSwap's implemented schema; it does not copy Instagram entities or fabricate specialization/weak entities. The assignment's fixed entity positions apply to its supplied answer sheet, not to this different application. The answer's pink circles are teaching annotations, not an additional ER symbol, so they are omitted here.
 
-    FAVORITES {
-        bigint user_id FK
-        bigint item_id FK
-        datetime created_at
-    }
+The diagram is a **conceptual ER model**, not a list of SQL tables with crow's-foot connectors. It contains **four entity sets** (Users, Items, Categories, Orders) and **five relationship sets** (sells, favorites, places, for_item, classifies). Mapping this model yields the **five tables** in `sql/schema.sql`.
 
-    ORDERS {
-        bigint id PK
-        bigint buyer_id FK
-        bigint item_id FK
-        decimal agreed_amount
-        varchar pickup_location
-        varchar status
-        datetime created_at
-        datetime updated_at
-    }
+## How to read it
+
+| Symbol | Meaning in this diagram |
+|---|---|
+| Rectangle | Entity set |
+| Diamond | Relationship set |
+| Ellipse | Attribute |
+| Solid underline | Selected primary-key attribute |
+| Arrow from relationship toward an entity | At most one entity on that side |
+| Double relationship line | Total participation: every entity on that side participates |
+| Single relationship line | Partial participation, unless further business rules restrict it |
+
+Attribute connector lines do not encode participation. Labels beside relationships are plain-language checks of their meaning. For example, `each item: 1 seller` combines Items' total participation in sells and the arrow to Users. `seller: 0..N items` means a user can exist without selling anything.
+
+## Cardinalities and participation
+
+| Relationship | Mapping | Participation and explanation | SQL mapping |
+|---|---|---|---|
+| Users — sells — Items | 1:N | User partial; Item total. Every item has one seller; a user can sell zero/many items. | `items.seller_id NOT NULL` → `users.id` |
+| Categories — classifies — Items | 1:N | Category partial; Item total. Every item has one category; a category can be empty. | `items.category_id NOT NULL` → `categories.id` |
+| Users — places — Orders | 1:N | User partial; Order total. Every order has one buyer; a user can have no orders. | `orders.buyer_id NOT NULL` → `users.id` |
+| Items — for_item — Orders | 1:N | Item partial; Order total. Every order concerns exactly one item; an item can have zero/many historical orders. | `orders.item_id NOT NULL` → `items.id`; no lifetime uniqueness |
+| Users — favorites — Items | M:N | Both partial. A user can save zero/many items; an item can be saved by zero/many users. | `favorites(user_id, item_id, created_at)`; composite PK `(user_id,item_id)` |
+
+The same Users entity participates in sells and places with different roles, seller and buyer. They are not disjoint subclasses: one account can do both.
+
+## Why favorites is a diamond
+
+The reference answer represents Users liking Posts using a **like relationship with a like_time attribute**. CampusSwap favorites has the same structure: Users favorite Items, and `created_at` belongs to that relationship.
+
+Reducing this M:N relationship creates the SQL `favorites` table. Both participating keys form its composite primary key. The table's existence does not require a fifth strong entity rectangle. All four strong entities already have independent global IDs, so none is a weak entity; Orders is not weak merely because it references an item.
+
+## Attribute coverage and exact schema correspondence
+
+Labels use the actual SQL names; each underlined `id` belongs to its own entity. No new attributes or columns are proposed.
+
+| Conceptual owner | Attributes drawn as ellipses |
+|---|---|
+| Users | id, full_name, email, password_hash, contact_phone, avatar_url, status, created_at, updated_at |
+| Items | id, title, description, price, item_condition, status, location, image_url, created_at, updated_at |
+| Orders | id, agreed_amount, pickup_location, status, created_at, updated_at |
+| Categories | id, name, created_at |
+| favorites relationship | created_at |
+
+All **35 schema columns** are accounted for: 29 entity/relationship attributes and six relationship-key columns (`items.seller_id`, `items.category_id`, `orders.buyer_id`, `orders.item_id`, `favorites.user_id`, `favorites.item_id`). The six latter columns appear when the conceptual relationships are reduced to tables; duplicating them as conceptual foreign-key ellipses would obscure that distinction.
+
+`users.email` and `categories.name` have additional UNIQUE constraints in the SQL schema. They are not underlined as selected primary keys in this figure. Nullable attributes such as image_url remain ordinary ellipses; single/double relationship lines do not indicate column nullability.
+
+## Order history and limits of the drawing
+
+The old diagram's `0..1` lifetime order rule was incompatible with the implementation and with retaining cancelled orders. Item 104 in the seed has a cancelled order and a later pending order. It must therefore permit multiple historical orders.
+
+The separate rule **at most one active order per item** applies only to pending/confirmed orders. It is not represented by an unconditional 1:1 relationship and is not enforced by the current DDL. Backend code still needs to implement and test it. Likewise, buyer ≠ seller, valid state transitions and authorization are business rules beyond these ordinary cardinalities.
+
+The snapshots `agreed_amount` and `pickup_location` belong to Orders and are stored facts, not derived attributes. An item with any order history cannot be hard-deleted under the current foreign keys. An unused item can be physically deleted after its favorites are handled. This diagram changes no SQL or application behaviour.
+
+## Rebuild from code
+
+From the repository root, using Python 3.9+:
+
+```sh
+python scripts/render_er_diagram.py
 ```
 
-## Relationship explanation
+This regenerates the SVG using only Python's standard library. The script uses fixed coordinates for a stable, editable layout and explicitly draws the classroom arrow/double-line notation. Edit the labels/coordinates in the source, then regenerate; do not manually edit the generated SVG.
 
-- `USERS` to `ITEMS`: one user can publish many items; every item has exactly one seller.
-- `CATEGORIES` to `ITEMS`: one category can contain many items; every item has one category.
-- `USERS` to `ITEMS` through `FAVORITES`: this is a many-to-many relationship resolved by the junction table. The composite primary key prevents duplicate favorites.
-- `USERS` to `ORDERS`: one user can place many orders; every order has one buyer.
-- `ITEMS` to `ORDERS`: an item can have zero or one order. A unique constraint on `orders.item_id` enforces the single-item rule.
+To also regenerate the committed PNG:
 
-## Why the model is normalized
+```sh
+python -m pip install Pillow
+python scripts/render_er_diagram.py --png
+```
 
-Seller and buyer data are stored once in `USERS`, category names are stored once in `CATEGORIES`, and many-to-many favorites are separated into `FAVORITES`. The order keeps transaction-time values such as `agreed_amount` and `pickup_location`, so later listing edits do not rewrite the transaction record.
+PNG rendering uses Arial on Windows or DejaVu Sans on Linux; install one of those fonts if needed. SVG remains usable without either installed locally (the viewer supplies a sans-serif fallback). The committed SVG/PNG are ready to view without running the script. No PDF renderer, Graphviz, Mermaid extension, browser, or external image service is required.
+
+## Checks and presentation use
+
+- Visually inspected the full rendered PNG and corrected overlapping ellipses/labels.
+- Verified four entity rectangles, five relationship diamonds, 29 attribute ellipses and four underlined primary keys.
+- Verified all 35 columns in `sql/schema.sql` are accounted for by attributes or relationship mappings.
+- Verified relationships agree with NOT NULL foreign keys and the existing seed's order history.
+- Database SQL and its 37-check test suite are unchanged by this documentation branch.
+
+For slides, show the full diagram first and zoom into sells/favorites and then Orders. Explain the arrow and double line using sells, explain the favorites relationship-to-table mapping, then state that an item can have multiple historical orders. Avoid reading every audit/profile attribute aloud.

@@ -86,4 +86,4 @@ This verifies database SQL/constraints, not the unfinished login/API/UI or concu
 
 ### Known design reconciliation
 
-The older ER document says an item has at most one lifetime order. B follows the requirements' **at most one active order**, preserving cancelled history. The database allows multiple historical orders; C must enforce the active-order and state-transition rules in the backend. All order references prevent hard-deletion of their item. See the handoff for this discrepancy and the exact deletion policy. The ER document has not yet been changed.
+The revised [classroom ER diagram](docs/er-diagram.md) distinguishes historical orders from the **at most one active order** business rule, preserving cancelled history. The database allows multiple historical orders; C must enforce the active-order and state-transition rules in the backend. All order references prevent hard-deletion of their item. See the handoff for the exact deletion policy and the ER document for cardinalities, complete attribute mapping, SVG/PNG exports and editable drawing code.

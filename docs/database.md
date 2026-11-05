@@ -1,6 +1,6 @@
 # CampusSwap database handoff — Member B
 
-Prepared 2026-11-05 against A's commit `9845d8c`. This is the database implementation contract for A/C/D/E. The original ER document is intentionally unchanged pending the user's review of B's work.
+Prepared 2026-11-05 against A's commit `9845d8c`. This is the database implementation contract for A/C/D/E. After review of B, the ER diagram was revised on a separate documentation branch; see er-diagram.md for the classroom notation and exact mapping.
 
 ## Deliverables and current status
 
@@ -73,7 +73,7 @@ Completed/cancelled orders are terminal records. An item with a completed sale c
 
 ## Deletion policy and document discrepancies
 
-The existing documents disagree in three ways:
+The original design documents disagreed in three ways; the revised ER document now reflects B's choices:
 
 | Existing statement | Issue | B's explicit choice |
 |---|---|---|
@@ -85,7 +85,7 @@ For an item with no order history, C first validates ownership and state, then r
 
 For a clear CRUD video, create a new test item, read it, update its price, then actually DELETE it. Use a new item without order history. Use another seeded item to demonstrate order history.
 
-Do not redraw A's ER diagram until the user confirms B is satisfactory. The revised conceptual ER diagram will later need to match the agreed contract and the professor's taught notation. This handoff records discrepancies without editing that diagram.
+The user has authorized the ER revision after B. The diagram now follows the Assignment 1 answer's conceptual notation and maps to this schema, with four entity sets and a favorites relationship producing five tables. No SQL was changed by the ER revision.
 
 ## Seed data guide
 
@@ -134,4 +134,4 @@ Time this aloud at the presenter's own pace. Keep SQL and schema legible; B expl
 - CRUD video (25): the documented new-item scenario distinguishes physical DELETE from status UPDATE and demonstrates saved values.
 - Functionality/design and delivery (20 combined): explicit contracts and a short B script support consistent group explanations.
 
-These are opportunities to satisfy the rubric, not a guarantee of 98–100. A's diagram, backend, frontend, full-app reproduction and final presentation are still outstanding group work.
+These are opportunities to satisfy the rubric, not a guarantee of 98–100. Backend, frontend, full-app reproduction and final presentation are still outstanding group work; the revised ER diagram remains subject to team review.

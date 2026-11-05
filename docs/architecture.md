@@ -62,7 +62,7 @@ The exact framework can be selected by the implementation team, but the MVP shou
 ### Delete listing
 
 1. Authenticate the seller and verify ownership.
-2. Reject deletion of an item with a completed order; otherwise remove the item and its favorites in a transaction.
+2. Reject hard deletion of an item with any order history, preserving the existing foreign-key references; otherwise remove the item and its favorites in a coordinated backend operation. Items with history may be marked removed only where the order-state rules permit it.
 3. Return a clear success response for the UI.
 
 ## Environment and reproducibility
