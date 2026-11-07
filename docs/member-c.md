@@ -1,86 +1,102 @@
-# Member C backend implementation and handoff
+# Member C: Express CRUD and order integration
 
-Implemented against main commit 07ebd7705ad6950736c8d7f85a6fc31cab21cbbd. Python 3.10+ / Flask / PyMySQL. B's schema is unchanged. This is the C module, not a complete frontend/auth application.
+C now runs inside A's Node.js/Express application. Based on A commit `0b65e67` on `user_log`, with A's original auth code, UI and tests retained. B's SQL is unchanged. This replaces the provisional Flask backend; the Python app, its requirements and its mocked tests have been removed.
 
-## Run
+## Start the integrated application
 
-From repository root:
+Use Node.js 20+ and MySQL 8.0.16+ (integration tests also passed on MySQL 8.4.11).
 
 ```sh
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements-c.txt
-export DB_HOST=127.0.0.1
-export DB_PORT=3306
-export DB_NAME=campusswap
-export DB_USER=your_mysql_user
-export DB_PASSWORD='your_local_password'
-export SESSION_SECRET='replace-with-a-long-random-secret'
-python -m backend.app
+npm ci
+cp .env.example .env
+# Edit MYSQL_HOST, MYSQL_PORT, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE,
+# and JWT_SECRET (at least 32 random bytes) in .env.
+# Initialize a NEW database using docs/database-setup.md first.
+npm start
 ```
 
-Initialize a fresh database using docs/database-setup.md first. The server listens at http://127.0.0.1:5000. Environment variables must be set in the shell; .env is not automatically loaded. On Windows use `.venv\Scripts\Activate.ps1` and `$env:DB_NAME="campusswap"` etc. Do not commit credentials. The PyMySQL RSA extra is included for MySQL caching_sha2_password authentication.
+Open http://localhost:3000. `src/server.js` passes the shared pool to `createApp`, which mounts authentication and C's marketplace routes. No Python API, second port, DB_* variables or SESSION_SECRET is needed. Do not commit .env or database credentials. The checked-in UI is A's account page; D's marketplace pages still need integration.
 
-## Authentication integration for A
+Register two accounts with different @connect.hku.hk addresses for seller/buyer testing. B's seed accounts use `!` password markers and cannot log in.
 
-Register A's authentication routes on the app returned by create_app. After verifying a password hash, clear the old session and set `session['user_id']=user_id`. Logout clears the session. Never accept user IDs from request headers/body as authentication. Seed `!` password markers cannot authenticate. No insecure development-login endpoint is provided.
+## Authentication and frontend handoff
 
-Before any write, the browser calls GET /api/csrf and sends the returned csrf_token as X-CSRF-Token with its session cookie. Fetch a new token after login clears the session. This applies to A's login/register/logout routes too. Serve UI and API on one origin (or use a frontend dev proxy). For HTTPS deployment set SESSION_COOKIE_SECURE=True. No CORS is enabled.
+- Reuse A's `/api/auth/register`, `/api/auth/login`, `/api/auth/me` and `/api/auth/logout` unchanged.
+- A sets the HttpOnly `campusswap_token` cookie. C uses A's `requireAuth` and `req.user.id`, including an active-account check. Never supply seller_id or buyer_id in a write body.
+- After login/register, call **GET /api/csrf**. It now requires authentication and returns `{ csrf_token }`. Send that token in **X-CSRF-Token** for C's POST/PATCH/DELETE requests. Fetch it again after a new login; discard it on logout.
+- The token is an HMAC bound to A's verified JWT cookie. There is no Flask session or separate CSRF cookie. A's auth endpoints keep their existing request contract and do not require this C token.
+- Serve frontend and API from the same origin, or configure D's development proxy for **all /api paths**, including /api/auth and /api/csrf. Use one consistent hostname. No CORS is enabled. Fetch uses `credentials: 'same-origin'`; the frontend never reads/stores the JWT.
+- The current user response is `{ user: { id, fullName, email } }`. Use it to choose seller/buyer buttons. Server permissions remain authoritative.
+
+Example after successful login (check response.ok in the frontend's shared request helper):
+
+```js
+const tokenResponse = await fetch('/api/csrf', { credentials: 'same-origin' });
+if (!tokenResponse.ok) throw new Error('Please log in again');
+const { csrf_token } = await tokenResponse.json();
+const response = await fetch('/api/items', {
+  method: 'POST', credentials: 'same-origin',
+  headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf_token },
+  body: JSON.stringify({ title: 'Database textbook', description: 'Clean copy',
+    price: '120.00', item_condition: 'good', category_id: '1', location: 'HKU' })
+});
+const result = await response.json();
+if (!response.ok) throw new Error(result.error);
+```
 
 ## API contract for D and E
 
-IDs and monetary amounts in responses are strings. Timestamps are UTC ISO strings. Single-resource responses are objects; lists are arrays. Errors are `{"error":"message"}`. Success: reads/patch 200, create 201, delete 204. Validation 400, no login 401, forbidden/CSRF 403, absent resource 404, business/constraint conflict 409.
+Paths and business rules are retained from C's previous version. IDs and amounts are **strings**; never convert IDs to JavaScript Number. Dates are UTC ISO strings. Single resources are objects, lists are arrays. Errors are `{ "error": "..." }`. Reads/patch return 200, create 201, deletion 204 (no JSON body). Errors: 400 invalid input, 401 unauthenticated/unavailable account, 403 ownership/CSRF, 404 absent resource, 409 conflict, 413 body over 64 KiB. Unexpected errors return generic 500 JSON.
 
-| Method | Path | Body / query |
-|---|---|---|
-| GET | /api/items | q, category_id, seller_id, condition, status, min_price, max_price, limit (1–100), offset |
-| GET | /api/items/:id | — |
-| POST | /api/items | title, description, price, item_condition, category_id, location; optional image_url |
-| PATCH | /api/items/:id | Any listing fields; status only available/removed |
-| DELETE | /api/items/:id | — |
-| POST | /api/orders | item_id; optional pickup_location (defaults to listing location) |
-| GET | /api/orders | Current user's buyer and seller orders |
-| PATCH | /api/orders/:id/status | status: confirmed/completed/cancelled |
-| GET | /api/categories | — |
-| GET | /api/csrf | Returns CSRF token and establishes cookie |
+| Method | Path | Input / access |
+| --- | --- | --- |
+| GET | /api/categories | Public |
+| GET | /api/items | Public; q, category_id, seller_id, condition, status, min_price, max_price, limit (1–100), offset |
+| GET | /api/items/:id | Public |
+| POST | /api/items | Login + CSRF; title, description, price, item_condition, category_id, location; optional image_url |
+| PATCH | /api/items/:id | Owner + CSRF; listing fields; status only available/removed |
+| DELETE | /api/items/:id | Owner + CSRF; no order history |
+| POST | /api/orders | Login + CSRF; item_id, optional pickup_location (defaults to listing location) |
+| GET | /api/orders | Login; current user's buyer and seller orders, with title/seller_id |
+| PATCH | /api/orders/:id/status | Participant + CSRF; status confirmed/completed/cancelled subject to rules below |
+| GET | /api/csrf | Login; returns csrf_token; do not cache |
 
-Example create body:
+Listing search defaults to available; specify status to see other states. Use `condition` in filters and `item_condition` in write bodies. No total-count wrapper or seller-name enrichment is added. Resolve category names through /api/categories. Images remain URLs. Monetary values permit zero and at most two decimal places within DECIMAL(10,2). Description is limited to MySQL TEXT's 65,535 UTF-8 bytes, additionally subject to the total JSON body limit. Auth fields remain fullName/email/password.
 
-```json
-{"title":"Database textbook","description":"Clean copy","price":"120.00","item_condition":"good","category_id":"1","location":"HKU"}
+## SQL, transactions and permissions
+
+`src/validation.js` validates input, preserves exact decimal strings and rejects unsafe numeric IDs. `src/marketplace.js` implements CRUD and order rules. `src/db.js` enables supportBigNumbers + bigNumberStrings for exact BIGINT handling. All SQL values use `?` parameters. Dynamic identifiers come only from internal whitelists. IDs are random positive 62-bit strings with collision retries; B's schema needs no AUTO_INCREMENT change.
+
+- CREATE: INSERT INTO items (...) VALUES (...).
+- READ: SELECT with parameterized filters and ordered pagination.
+- UPDATE: lock the item, verify ownership/order state, then UPDATE items SET ... WHERE id=?.
+- DELETE: lock the item, reject **any** order history (including cancelled), then delete its favorites and unused item in the same transaction.
+- ORDER: SELECT item ... FOR UPDATE; reject self-purchase/unavailable items; INSERT order with price/location snapshots; UPDATE item to reserved; COMMIT both, or ROLLBACK both.
+- State updates also lock the item first, then the order. Seller: pending→confirmed/cancelled; confirmed→completed/cancelled. Buyer: pending→cancelled only. Cancellation reopens the item; completion marks it sold. Terminal orders cannot transition. Reserved/sold listings cannot be edited directly.
+- Connections are released after commit/rollback. Lock conflicts return 409 and require the client to refresh before retrying.
+
+E can use A's retained mountRoutes hook for favorites. Favorites writers should lock the item first inside their transaction to coordinate with deletion. Search/filter endpoints already exist; coordinate UI work rather than adding duplicate routes.
+
+## Verification and reproducibility
+
+```sh
+npm test
+python3 scripts/test-mysql.py --mysql-bin /absolute/path/to/mysql/bin
 ```
 
-Listing reads default to available; supply a status to browse other states. Detail reads are public. Search/filter support is supplied for integration with E; favorites remain E's responsibility. Use item_condition in writes, condition in query strings. Money accepts zero but rejects negatives, >2 fractional decimals and values outside DECIMAL(10,2). Descriptions are limited to 65,535 UTF-8 bytes (MySQL TEXT), and requests to 64 KiB; oversized requests return JSON with HTTP 413. Unknown JSON fields are rejected; seller/buyer IDs and order amount come from trusted server state.
+On Windows use `python` if that is your Python 3 command. The second command needs official MySQL server/client binaries and Python 3; it initializes a new temporary data directory and database, starts a loopback-only server on a temporary port, applies B's unchanged schema/seed, runs the real integration tests, then stops and cleans up that instance. It does not use the database configured in .env. Do not run tests/mysql.test.js against an existing database manually.
 
-## Business rules and SQL explanation
+Verified on 2026-11-07 with Node 24.12.0 and MySQL 8.4.11:
 
-All values use `%s` bound parameters. Listing ownership is checked server-side. UTC timestamps and random positive 62-bit IDs match B's non-AUTO_INCREMENT schema; duplicate IDs retry up to three times.
+- `npm test`: **14 passed**, 0 failed. The separate real-MySQL suite is intentionally skipped by this command. A's 7 original tests remain unchanged. C includes a 36-case order permission matrix inside one test.
+- Disposable MySQL run: **9 scenario subtests passed**, plus their parent suite (Node reports 10 passed), 0 failed, 0 skipped.
+- Real scenarios: A register/login cookie → C writes; CSRF rejection; filtering/pagination/injection input; BIGINT read/update/delete; ownership and favorite cleanup; two concurrent buyers yielding exactly one 201 and one 409; cancellation/reorder with preserved snapshots; participant-only history and seller completion; injected failure after order INSERT with full rollback; suspended/expired/tampered/logged-out sessions rejected.
+- B's SQL, A's src/auth.js and A's tests/auth.test.js are unchanged. npm's dependency installation audit reported 0 vulnerabilities at verification time.
 
-CREATE: INSERT INTO items (...) VALUES (...). READ: SELECT with WHERE filters and ordered pagination. UPDATE: UPDATE items SET ... WHERE id=%s after locking and ownership checks. DELETE: delete favorites then the unused listing in one transaction. Any order history prevents hard deletion, including cancelled orders. This follows B's database guide and supersedes the older architecture note that only mentioned completed orders.
-
-Ordering locks the item with SELECT ... FOR UPDATE, checks availability, ownership and active orders, snapshots price/location in INSERT INTO orders, then updates the item to reserved before COMMIT. Failures roll back. Concurrent purchases of the same item serialize on its row lock. This is an implementation design, not a claim of an executed concurrency test.
-
-Seller: pending→confirmed, pending/confirmed→cancelled, confirmed→completed. Buyer: pending→cancelled only. Cancellation reopens the item; completion marks sold. Terminal orders cannot transition. Status updates lock the item first and order second. Listing PATCH cannot bypass the order flow or edit reserved/sold listings. Favorites writers should also lock the item first to coordinate with deletion.
-
-## Verification
-
-Run `python -m unittest discover -s tests -p 'test_backend.py' -v`.
-These tests cover validation, CSRF, unauthorized deletion, retained history, order snapshot/reservation SQL, commit and rollback using a mocked database. They do NOT establish real MySQL or concurrency correctness. MySQL was unavailable in the implementation environment.
-
-Before merging, run against a disposable MySQL database with schema/seed: create/read/edit/delete a new listing; verify deletion removes favorites; reject non-owner edits; reject suspended users; place two simultaneous orders for the same item and assert exactly one 201 and one 409, one active order and reserved state; cancel/reorder; seller confirm/complete; reject buyer completion and terminal transitions; confirm order snapshots persist and history blocks deletion. Test through A's login and D's UI once integrated. Do not use production data for these tests.
+D's actual marketplace UI and E's favorites API are not included in these tests. Next team check: connect D's branch, run seller/buyer flows through its pages, and repeat on the team's MySQL version before merging main. A's existing stateless JWT logout clears the browser cookie; it does not add server-side revocation of already copied tokens.
 
 ## C presentation script (approximately 45 seconds; rehearse)
 
-I implemented the listing CRUD APIs and order workflow. Each request uses parameterized SQL, and the server checks login, ownership and input values. Sellers can insert, read, update and delete their own unused listings. Listings with order history cannot be deleted. When a buyer places an order, the backend locks the item in a transaction, checks availability, stores the agreed price and pickup location, and reserves the item. Both changes commit together, or both roll back. Cancellation makes the item available again, while completion marks it sold. The backend also checks which status changes each buyer or seller is allowed to perform.
+I implemented the listing CRUD APIs and order workflow in our shared Express backend. The APIs reuse the login middleware and check ownership, input values and CSRF tokens. All SQL values use bound parameters. Sellers can create, read, update and delete unused listings, while order history prevents deletion. Ordering locks the item in a transaction, saves the agreed price and pickup location, then reserves the item. Both changes commit together or roll back. Cancellation reopens the item and completion marks it sold. Our real MySQL tests verified rollback and confirmed that two simultaneous buyers cannot both purchase the same item.
 
-中文理解：CRUD 对应 INSERT、SELECT、UPDATE、DELETE；参数绑定避免把输入拼进 SQL；事务确保订单与物品状态一起成功或失败；行锁用于让同一物品的并发购买依次检查；订单保存成交时的价格与地点，后续商品修改不会改变历史快照。讲解时把事务/行锁称为实现措施，不要声称它们已由 B 的课程 SQL 验证覆盖。
-
-## Compatibility review of the supplied ZIPs
-
-Both supplied branches contain identical schema.sql, seed.sql and queries.sql. Neither includes authentication or frontend source, so Flask/session choice and frontend JSON compatibility are provisional. The architecture explicitly leaves framework selection to the team; backend/ is a new directory, not an established team convention. Layers currently share one small module with SQL helpers rather than separate service/repository files; adapt this after A supplies the application's actual structure.
-
-Use the ER branch's historical-order cardinality and deletion description together with B's database guide. The old main ER prose claims a unique orders.item_id, but the actual SQL intentionally has no such constraint. Do not change SQL to match that obsolete prose. Both requirements files still describe seller status changes broadly; this API follows B's stricter workflow: reserved/sold must be reached through order transitions. Confirm that D's UI uses the order buttons for these states.
-
-The API supplies no seller/category display-name enrichment on item reads: D receives seller_id/category_id, and categories can be resolved through /api/categories. Item images are URLs, not uploaded files. List responses are arrays with limit/offset but no total count. Orders return all current-user buyer/seller orders, with seller_id and title. Confirm these choices with D before frontend integration. A must expose a current-user identity to the UI if D needs buyer/seller-specific controls.
-
-The upload-only package adds requirements-c.txt instead of replacing a shared dependency file. Install it in the shared backend environment if Flask is adopted. Keep B's SQL, other members' documents and the root README unchanged for this review PR. Add a link to this guide to the root README only when integrating the agreed application.
+中文交接：C 已迁入 A 的 Express/JWT 架构；登录和 CRUD/订单用同一服务、同一 users 表。D 登录后先取 /api/csrf，写请求带 X-CSRF-Token；ID 和金额保持字符串。B 不需要重写 SQL。E 可复用现有搜索筛选接口。真实数据库接口测试已通过，D 的页面联调仍待完成。

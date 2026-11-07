@@ -56,6 +56,8 @@ const app = createApp({
 });
 ```
 
+C's routes are now mounted by `createApp` when a `pool` is supplied (as done in `src/server.js`). The existing `mountRoutes` hook remains available for E and other features. After login, C's write requests also require a token from `/api/csrf`; see [C's frontend contract](member-c.md). Auth endpoints retain the contract above.
+
 The shared user shape is `{ id: string, email: string, fullName: string }`. Keep `id` as a string at the API boundary to preserve BIGINT precision. Public listing routes do not need authentication; mutations must authenticate and enforce ownership on the server.
 
 ## Run locally

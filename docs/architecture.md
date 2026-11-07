@@ -63,9 +63,9 @@ The backend is implemented with **Node.js 20+, Express 5, MySQL 8, and `mysql2/p
 ### Delete listing
 
 1. Authenticate the seller and verify ownership.
-2. Reject deletion of an item with a completed order; otherwise remove the item and its favorites in a transaction.
+2. Reject deletion of an item with any order history, including cancelled orders; otherwise remove the unused item and its favorites in a transaction.
 3. Return a clear success response for the UI.
 
 ## Environment and reproducibility
 
-Configuration should be read from environment variables such as `DATABASE_URL`, `SESSION_SECRET`, and `PORT`. A setup script or SQL seed file should create the schema, insert categories, and add representative accounts and listings. The root README must document the exact commands for installing dependencies, setting environment variables, initializing the database, and starting the server.
+Configuration is read from `.env` using `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_DATABASE`, `JWT_SECRET`, and `PORT`. C uses A's authenticated `req.user.id` and a JWT-bound CSRF token for marketplace writes; see [the C integration guide](member-c.md). A setup script or SQL seed file should create the schema, insert categories, and add representative accounts and listings. The root README must document the exact commands for installing dependencies, setting environment variables, initializing the database, and starting the server.
