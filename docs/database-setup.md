@@ -50,4 +50,4 @@ The script starts an isolated temporary MySQL server on a random loopback port, 
 - **Database/table already exists:** stop and use a fresh database.
 - **CHECK constraints unsupported:** run `SELECT VERSION();` and use MySQL 8.0.16+.
 
-Full application installation and start commands will be added when the web stack is implemented.
+For the Node.js + Express authentication API and account page, follow [the authentication module run guide](authentication.md#run-locally). The complete stack requires Node.js 20+ in addition to the MySQL prerequisites above.

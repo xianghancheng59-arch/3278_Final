@@ -22,13 +22,14 @@ The browser owns page rendering and form interaction. The API owns authenticatio
 
 ## API boundary
 
-The exact framework can be selected by the implementation team, but the MVP should expose equivalent operations:
+The backend is implemented with **Node.js 20+, Express 5, MySQL 8, and `mysql2/promise`**. Authentication uses bcryptjs password hashes and a signed JWT in an HTTP-only cookie. The MVP exposes these operations:
 
 | Method | Endpoint | Purpose | Access |
 | --- | --- | --- | --- |
 | `POST` | `/api/auth/register` | Create an account | Public |
 | `POST` | `/api/auth/login` | Start a session | Public |
-| `POST` | `/api/auth/logout` | End a session | Logged-in user |
+| `POST` | `/api/auth/logout` | End a session | Public (session optional) |
+| `GET` | `/api/auth/me` | Read the current account | Logged-in user |
 | `GET` | `/api/items` | Search and filter listings | Public |
 | `GET` | `/api/items/:id` | Read one listing | Public |
 | `POST` | `/api/items` | Create a listing | Logged-in user |
