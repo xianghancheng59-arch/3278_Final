@@ -17,6 +17,8 @@ function createPool(env = process.env) {
     connectionLimit: 10,
     queueLimit: 0,
     timezone: 'Z',
+    supportBigNumbers: true,
+    bigNumberStrings: true,
     charset: 'utf8mb4'
   });
 }

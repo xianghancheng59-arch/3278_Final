@@ -5,6 +5,7 @@ const { createPool, createUserRepository } = require('./db');
 
 const pool = createPool();
 const app = createApp({
+  pool,
   users: createUserRepository(pool),
   jwtSecret: process.env.JWT_SECRET,
   isProduction: process.env.NODE_ENV === 'production'
@@ -12,7 +13,7 @@ const app = createApp({
 const port = Number(process.env.PORT || 3000);
 
 const server = app.listen(port, () => {
-  console.log(`CampusSwap auth server listening on http://localhost:${port}`);
+  console.log(`CampusSwap server listening on http://localhost:${port}`);
 });
 
 async function shutdown() {
