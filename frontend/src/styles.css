@@ -48,3 +48,14 @@
 @media(max-width:740px){.hero-wrap{padding-top:35px;grid-template-columns:1fr;gap:23px}.hero-copy h1{font-size:54px;letter-spacing:-3.5px;margin-bottom:19px}.hero-art{height:290px}.marketplace-section{padding-top:47px}.section-heading h2{font-size:32px}.item-card-body{padding:11px 10px 13px}.item-art{height:auto;aspect-ratio:1/1}.auth-art{min-height:220px}.auth-art h2{font-size:37px}.form-page-header h1{font-size:35px}}
 html,body,#root,.app-shell{width:100%;max-width:100%;overflow-x:clip}
 @media(max-width:420px){.hero-copy h1{font-size:46px;letter-spacing:-3.1px}}
+
+.quick-filters{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.price-filter{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 0;border-bottom:1px solid #e2e5de}
+.price-filter-title{font-size:8px;font-weight:700;letter-spacing:1.25px;color:#718078;margin-right:4px}
+.price-filter label{display:flex;align-items:center;gap:5px;color:#6d7d73;font-size:9px;font-weight:700}
+.price-filter input{width:86px;border:1px solid #dfe5dc;border-radius:4px;background:#fbfcf9;color:#35473d;padding:8px 9px;font-size:11px;outline:none}
+.price-filter input:focus{border-color:#79a183;box-shadow:0 0 0 2px rgba(121,161,131,.12)}
+.price-separator{font-size:9px;color:#a0aaa3}
+.filter-button{border:0;border-radius:4px;background:#315f4c;color:#fff;padding:8px 12px;font-size:9px;font-weight:700}
+.filter-reset{border:0;background:none;color:#68806f;font-size:9px;text-decoration:underline}
+@media(max-width:740px){.browse-tools{align-items:flex-start;flex-direction:column}.quick-filters{gap:10px}.price-filter-title{width:100%}.price-filter{padding-bottom:15px}.price-filter input{width:74px}}

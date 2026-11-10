@@ -1,4 +1,5 @@
 const path = require('node:path');
+const fs = require('node:fs');
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
@@ -6,7 +7,7 @@ const { createAuthRouter, requireAuth } = require('./auth');
 const { createMarketplaceRouter } = require('./marketplace');
 const { APIError } = require('./validation');
 
-function createApp({ users, jwtSecret, isProduction = false, mountRoutes, pool }) {
+function createApp({ users, jwtSecret, isProduction = false, mountRoutes, pool, serveFrontend = false }) {
   if (!users) throw new Error('A user repository is required.');
   if (typeof jwtSecret !== 'string' || Buffer.byteLength(jwtSecret) < 32) {
     throw new Error('JWT_SECRET must contain at least 32 bytes.');
@@ -23,7 +24,14 @@ function createApp({ users, jwtSecret, isProduction = false, mountRoutes, pool }
   app.use('/api/auth', createAuthRouter({ users, jwtSecret, isProduction }));
   if (pool) app.use('/api', createMarketplaceRouter({ pool, requireAuth: authMiddleware, jwtSecret }));
   if (mountRoutes) mountRoutes(app, { requireAuth: authMiddleware, users });
-  app.use(express.static(path.join(__dirname, '..', 'public')));
+  const frontendDirectory = path.join(__dirname, '..', 'dist');
+  const frontendIndex = path.join(frontendDirectory, 'index.html');
+  const serveBuiltFrontend = serveFrontend && fs.existsSync(frontendIndex);
+  const staticDirectory = serveBuiltFrontend ? frontendDirectory : path.join(__dirname, '..', 'public');
+  app.use(express.static(staticDirectory));
+  if (serveBuiltFrontend) {
+    app.get(/^(?!\/api(?:\/|$)).*/, (req, res) => res.sendFile(frontendIndex));
+  }
   app.use((req, res) => res.status(404).json({ error: 'Not found.' }));
   app.use((error, req, res, next) => {
     if (res.headersSent) return next(error);

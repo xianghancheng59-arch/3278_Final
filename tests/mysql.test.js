@@ -36,7 +36,10 @@ test('A login + C marketplace on disposable real MySQL', { skip: process.env.C_M
   });
   await t.test('real SELECT, filters, pagination, invalid input and injection handling', async () => {
     await request(app).get('/api/categories').expect(200).then((r) => assert.equal(r.body.length, 5));
-    const response = await request(app).get('/api/items').query({ seller_id: seller.user.id, q: 'textbook', min_price: '120', max_price: '120', limit: '1', offset: '0' }).expect(200);
+    const response = await request(app).get('/api/items').query({
+      seller_id: seller.user.id, category_id: '1', condition: 'good', status: 'available',
+      q: 'textbook', min_price: '120', max_price: '120', limit: '1', offset: '0'
+    }).expect(200);
     assert.equal(response.body[0].id, item.id);
     assert.equal(response.body[0].price, '120.00');
     await request(app).get('/api/items').query({ q: "' OR 1=1 --" }).expect(200, []);
@@ -45,6 +48,27 @@ test('A login + C marketplace on disposable real MySQL', { skip: process.env.C_M
     await request(app).get('/api/items/9223372036854775807').expect(404);
     await send(seller, 'post', '/api/items', { ...data, category_id: '999999' }).expect(409);
     await send(seller, 'post', '/api/items', { ...data, seller_id: buyer.user.id }).expect(400);
+  });
+  await t.test('favorites are private, persistent, idempotent and availability-aware', async () => {
+    const unused = await create({ title: 'Favorite integration', price: '55.50' });
+    await buyer.agent.get('/api/favorites').expect(200, []);
+    await buyer.agent.post(`/api/items/${unused.id}/favorite`).send({}).expect(403);
+    await send(buyer, 'post', `/api/items/${unused.id}/favorite`, {}).expect(204);
+    await send(buyer, 'post', `/api/items/${unused.id}/favorite`, {}).expect(204);
+
+    const saved = (await buyer.agent.get('/api/favorites').expect(200)).body;
+    assert.equal(saved.length, 1);
+    assert.equal(saved[0].id, unused.id);
+    assert.equal(saved[0].title, 'Favorite integration');
+    assert.deepEqual((await other.agent.get('/api/favorites').expect(200)).body, []);
+
+    await send(seller, 'patch', `/api/items/${unused.id}`, { status: 'removed' }).expect(200);
+    await send(other, 'post', `/api/items/${unused.id}/favorite`, {}).expect(409);
+    await send(seller, 'patch', `/api/items/${unused.id}`, { status: 'available' }).expect(200);
+
+    await send(buyer, 'delete', `/api/items/${unused.id}/favorite`, {}).expect(204);
+    await buyer.agent.get('/api/favorites').expect(200, []);
+    await send(seller, 'delete', `/api/items/${unused.id}`, {}).expect(204);
   });
   await t.test('BIGINT IDs survive database reads, edits and deletes exactly', async () => {
     const largeId = '4611686018427387903';

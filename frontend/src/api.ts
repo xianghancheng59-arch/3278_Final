@@ -1,4 +1,4 @@
-import { Item, ItemDraft, Order, User, categories, conditionToApi, itemFromApi, orderFromApi } from './types'
+import { Item, ItemDraft, ItemStatus, Order, User, categories, conditionToApi, itemFromApi, orderFromApi } from './types'
 
 const baseUrl = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
 const DEMO_ITEMS = 'campusswap:items:v1'
@@ -43,7 +43,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return body as T
 }
 
-function demoOnly(): boolean { return import.meta.env.VITE_DEMO_MODE !== 'false' }
+function demoOnly(): boolean { return import.meta.env.VITE_DEMO_MODE === 'true' }
 
 function userFromApi(raw: any): User {
   return { id: String(raw.id), fullName: raw.fullName ?? raw.full_name ?? '', email: raw.email, contactPhone: raw.contactPhone ?? raw.contact_phone }
@@ -96,7 +96,14 @@ export const api = {
     } catch { return null }
   },
   async logout() { if (!demoOnly()) { csrfToken = null; await request('/api/auth/logout', { method: 'POST' }) } },
-  async getItems(params: { search?: string; category?: string; condition?: string } = {}): Promise<Item[]> {
+  async getItems(params: {
+    search?: string
+    category?: string
+    condition?: string
+    minPrice?: string
+    maxPrice?: string
+    status?: ItemStatus
+  } = {}): Promise<Item[]> {
     if (!demoOnly()) {
       const query = new URLSearchParams()
       if (params.search) query.set('q', params.search)
@@ -105,13 +112,18 @@ export const api = {
         if (category) query.set('category_id', category.id)
       }
       if (params.condition && params.condition !== 'Any condition') query.set('condition', conditionToApi(params.condition as Item['condition']))
+      if (params.minPrice) query.set('min_price', params.minPrice)
+      if (params.maxPrice) query.set('max_price', params.maxPrice)
+      if (params.status) query.set('status', params.status)
       return itemsFrom(`/api/items${query.size ? `?${query}` : ''}`)
     }
     ensureSeed()
-    let items = read<Item[]>(DEMO_ITEMS, seedItems).filter((item) => item.status === 'available')
+    let items = read<Item[]>(DEMO_ITEMS, seedItems).filter((item) => item.status === (params.status ?? 'available'))
     if (params.search) { const q = params.search.toLowerCase(); items = items.filter((item) => `${item.title} ${item.description} ${item.category}`.toLowerCase().includes(q)) }
     if (params.category && params.category !== 'All items') items = items.filter((item) => item.category === params.category)
     if (params.condition && params.condition !== 'Any condition') items = items.filter((item) => item.condition === params.condition)
+    if (params.minPrice) items = items.filter((item) => item.price >= Number(params.minPrice))
+    if (params.maxPrice) items = items.filter((item) => item.price <= Number(params.maxPrice))
     return items
   },
   async getItem(id: string): Promise<Item | undefined> {
@@ -145,13 +157,17 @@ export const api = {
     ensureSeed(); write(DEMO_ITEMS, read<Item[]>(DEMO_ITEMS, seedItems).filter((item) => item.id !== id))
     write(DEMO_FAVORITES, read<string[]>(DEMO_FAVORITES, []).filter((favorite) => favorite !== id))
   },
-  async getFavorites(): Promise<string[]> {
-    // The C branch does not mount favorites routes; E's API contract is still pending.
-    if (!demoOnly()) return []
-    return read<string[]>(DEMO_FAVORITES, [])
+  async getFavoriteItems(): Promise<Item[]> {
+    if (!demoOnly()) return itemsFrom('/api/favorites')
+    ensureSeed()
+    const favoriteIds = read<string[]>(DEMO_FAVORITES, [])
+    const byId = new Map(read<Item[]>(DEMO_ITEMS, seedItems).map((item) => [item.id, item]))
+    return favoriteIds.map((id) => byId.get(id)).filter((item): item is Item => Boolean(item))
   },
   async toggleFavorite(id: string, active: boolean) {
-    if (!demoOnly()) throw new Error('Favorites are not connected to the server yet.')
+    if (!demoOnly()) {
+      return request(`/api/items/${encodeURIComponent(id)}/favorite`, { method: active ? 'DELETE' : 'POST' })
+    }
     const current = read<string[]>(DEMO_FAVORITES, [])
     write(DEMO_FAVORITES, active ? current.filter((favorite) => favorite !== id) : [...current, id])
   },

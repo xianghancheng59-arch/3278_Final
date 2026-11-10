@@ -78,6 +78,16 @@ function createMarketplaceRouter({ pool, requireAuth, jwtSecret }) {
     const [rows] = await pool.execute('SELECT id,name FROM categories ORDER BY id');
     res.json(rows.map(publicRow));
   });
+  router.get('/favorites', requireAuth, async (req, res) => {
+    const [rows] = await pool.execute(
+      `SELECT i.* FROM favorites f
+       JOIN items i ON i.id=f.item_id
+       WHERE f.user_id=?
+       ORDER BY f.created_at DESC,i.id DESC`,
+      [req.user.id]
+    );
+    res.set('Cache-Control', 'no-store').json(rows.map(publicRow));
+  });
   router.get('/items', async (req, res) => {
     const { sql, args } = itemQuery(req.query);
     const [rows] = await pool.execute(sql, args);
@@ -87,6 +97,27 @@ function createMarketplaceRouter({ pool, requireAuth, jwtSecret }) {
     const row = await one(pool, 'SELECT * FROM items WHERE id=?', [id(req.params.id)]);
     if (!row) throw new APIError('Item not found', 404);
     res.json(publicRow(row));
+  });
+  router.post('/items/:id/favorite', ...write, async (req, res) => {
+    const itemId = id(req.params.id);
+    await transaction(pool, async (db) => {
+      const row = await lockedItem(db, itemId);
+      if (row.status !== 'available') throw new APIError('Only available listings can be favorited', 409);
+      await db.execute(
+        `INSERT INTO favorites (user_id,item_id,created_at) VALUES (?,?,?)
+         ON DUPLICATE KEY UPDATE created_at=created_at`,
+        [req.user.id, row.id, new Date()]
+      );
+    });
+    res.status(204).end();
+  });
+  router.delete('/items/:id/favorite', ...write, async (req, res) => {
+    const itemId = id(req.params.id);
+    await transaction(pool, async (db) => {
+      const row = await lockedItem(db, itemId);
+      await db.execute('DELETE FROM favorites WHERE user_id=? AND item_id=?', [req.user.id, row.id]);
+    });
+    res.status(204).end();
   });
   router.post('/items', ...write, async (req, res) => {
     const values = listing(req.body, true), now = new Date();

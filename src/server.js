@@ -8,7 +8,8 @@ const app = createApp({
   pool,
   users: createUserRepository(pool),
   jwtSecret: process.env.JWT_SECRET,
-  isProduction: process.env.NODE_ENV === 'production'
+  isProduction: process.env.NODE_ENV === 'production',
+  serveFrontend: process.env.SERVE_FRONTEND === 'true'
 });
 const port = Number(process.env.PORT || 3000);
 

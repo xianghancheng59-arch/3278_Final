@@ -5,8 +5,10 @@
   "description": "CampusSwap authentication API and web interface",
   "main": "src/server.js",
   "scripts": {
+    "build": "npm --prefix frontend run build",
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
+    "dev:frontend": "npm --prefix frontend run dev",
     "test": "node --test"
   },
   "engines": {

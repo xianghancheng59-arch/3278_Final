@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { api } from './api'
-import { categories, Condition, Item, ItemDraft, Order, User } from './types'
+import { categories, Condition, Item, ItemDraft, ItemStatus, Order, User } from './types'
 
 type View = 'browse' | 'detail' | 'listing' | 'auth' | 'orders' | 'my-listings' | 'favorites'
 type IconName = 'search' | 'heart' | 'user' | 'plus' | 'arrow' | 'pin' | 'bag' | 'check' | 'close' | 'spark'
@@ -56,12 +56,18 @@ function App() {
   const [myListings, setMyListings] = useState<Item[]>([])
   const [orders, setOrders] = useState<Order[]>([])
   const [favorites, setFavorites] = useState<string[]>([])
+  const [favoriteListings, setFavoriteListings] = useState<Item[]>([])
   const [activeItem, setActiveItem] = useState<Item | null>(null)
   const [editingItem, setEditingItem] = useState<Item | null>(null)
   const [query, setQuery] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [category, setCategory] = useState('All items')
   const [condition, setCondition] = useState('Any condition')
+  const [status, setStatus] = useState<ItemStatus>('available')
+  const [minPriceInput, setMinPriceInput] = useState('')
+  const [maxPriceInput, setMaxPriceInput] = useState('')
+  const [minPrice, setMinPrice] = useState('')
+  const [maxPrice, setMaxPrice] = useState('')
   const [loading, setLoading] = useState(true)
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
@@ -73,10 +79,13 @@ function App() {
     setLoading(true)
     try {
       const [nextItems, nextOrders, nextFavorites] = await Promise.all([
-        api.getItems({ search: query, category, condition }), user ? api.getOrders() : Promise.resolve([]), user ? api.getFavorites() : Promise.resolve([]),
+        api.getItems({ search: query, category, condition, minPrice, maxPrice, status }),
+        user ? api.getOrders() : Promise.resolve([]),
+        user ? api.getFavoriteItems() : Promise.resolve([]),
       ])
       const owned = user ? await api.getMyItems(user) : []
-      setItems(nextItems); setMyListings(owned); setOrders(nextOrders); setFavorites(nextFavorites); setError('')
+      setItems(nextItems); setMyListings(owned); setOrders(nextOrders)
+      setFavoriteListings(nextFavorites); setFavorites(nextFavorites.map((item) => item.id)); setError('')
     } catch (caught) { setError(caught instanceof Error ? caught.message : 'Could not load CampusSwap.'); }
     finally { setLoading(false) }
   }
@@ -91,11 +100,11 @@ function App() {
     })
     return () => { active = false }
   }, [])
-  useEffect(() => { if (authReady) void refresh() }, [authReady, query, category, condition, user?.id, view])
+  useEffect(() => { if (authReady) void refresh() }, [authReady, query, category, condition, minPrice, maxPrice, status, user?.id, view])
   useEffect(() => { if (!notice) return; const timer = window.setTimeout(() => setNotice(''), 3200); return () => window.clearTimeout(timer) }, [notice])
 
   const myItems = myListings
-  const favoriteItems = useMemo(() => items.filter((item) => favorites.includes(item.id)), [items, favorites])
+  const favoriteItems = favoriteListings
   const myOrders = useMemo(() => orders.filter((order) => order.buyerId === user?.id || order.sellerId === user?.id), [orders, user])
   const unreadCount = myOrders.filter((order) => order.sellerId === user?.id && order.status === 'pending').length
 
@@ -103,10 +112,19 @@ function App() {
   function goBrowse() { setView('browse'); setActiveItem(null); setEditingItem(null); setMobileMenu(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }
   function openItem(item: Item) { setActiveItem(item); setView('detail'); window.scrollTo({ top: 0, behavior: 'smooth' }) }
   function openListing(item?: Item) { if (!user) return openAuth(); setEditingItem(item ?? null); setView('listing'); window.scrollTo({ top: 0, behavior: 'smooth' }) }
-  async function toggleFavorite(id: string) {
+  async function toggleFavorite(item: Item) {
     if (!user) return openAuth()
-    const active = favorites.includes(id)
-    try { await api.toggleFavorite(id, active); setFavorites((current) => active ? current.filter((favorite) => favorite !== id) : [...current, id]); setNotice(active ? 'Removed from your saved items.' : 'Saved for later.') }
+    const active = favorites.includes(item.id)
+    if (!active && item.status !== 'available') {
+      setError('Only available listings can be added to favorites.')
+      return
+    }
+    try {
+      await api.toggleFavorite(item.id, active)
+      setFavorites((current) => active ? current.filter((favorite) => favorite !== item.id) : [...current, item.id])
+      setFavoriteListings((current) => active ? current.filter((favorite) => favorite.id !== item.id) : [item, ...current.filter((favorite) => favorite.id !== item.id)])
+      setNotice(active ? 'Removed from your saved items.' : 'Saved for later.')
+    }
     catch (caught) { setError(caught instanceof Error ? caught.message : 'Could not update favorite.') }
   }
 
@@ -157,6 +175,35 @@ function App() {
 
   function runSearch(event: FormEvent) { event.preventDefault(); setQuery(searchInput.trim()); setView('browse') }
 
+  function applyPriceFilter(event: FormEvent) {
+    event.preventDefault()
+    const nextMin = minPriceInput.trim()
+    const nextMax = maxPriceInput.trim()
+    if (nextMin && nextMax && Number(nextMin) > Number(nextMax)) {
+      setError('Minimum price cannot be greater than maximum price.')
+      return
+    }
+    setMinPrice(nextMin)
+    setMaxPrice(nextMax)
+    setError('')
+  }
+
+  function clearFilters() {
+    setQuery('')
+    setSearchInput('')
+    setCategory('All items')
+    setCondition('Any condition')
+    setStatus('available')
+    setMinPriceInput('')
+    setMaxPriceInput('')
+    setMinPrice('')
+    setMaxPrice('')
+    setError('')
+  }
+
+  const filtersActive = Boolean(query || category !== 'All items' || condition !== 'Any condition' ||
+    minPrice || maxPrice || status !== 'available')
+
   return <div className="app-shell">
     <header className="site-header">
       <div className="header-inner">
@@ -176,16 +223,30 @@ function App() {
         <section className="hero-wrap"><div className="hero-copy"><div className="eyebrow"><span className="eyebrow-line"/>HKU’S CAMPUS MARKETPLACE</div><h1>Good things<br/>find <em>new homes.</em></h1><p>Buy and sell the things you love, right here on campus. Better for your wallet, and a little kinder to the planet.</p><div className="hero-ctas"><button className="primary-button" onClick={() => document.getElementById('marketplace')?.scrollIntoView({ behavior: 'smooth' })}>Explore the marketplace <Icon name="arrow" size={16}/></button><button className="text-button" onClick={() => openListing()}>Sell an item ↗</button></div><div className="hero-proof"><div className="proof-avatars"><span>M</span><span>J</span><span>A</span><span>+</span></div><span>A little community that gets it.</span></div></div><div className="hero-art"><div className="hero-sun"/><div className="hero-sticker">GOOD<br/>GOES<br/>AROUND <span>↗</span></div><div className="hero-object hero-headphones">🎧</div><div className="hero-object hero-book">📚</div><div className="hero-object hero-mug">☕</div><div className="hero-caption"><span>01 / 03</span><span>Second-hand, first choice.</span></div></div></section>
         <section className="trust-strip"><div><strong>Made for HKU</strong><span>Find it nearby, meet up on campus.</span></div><div><strong>Good finds, fair prices</strong><span>Great things deserve a second chapter.</span></div><div><strong>Keep it in circulation</strong><span>Small swaps, a lighter footprint.</span></div><span className="trust-spark"><Icon name="spark" size={25}/></span></section>
         <section id="marketplace" className="marketplace-section"><div className="section-heading"><div><div className="eyebrow"><span className="eyebrow-line"/>THE GOOD STUFF</div><h2>Find your <em>next favourite.</em></h2></div><span className="section-note">A few things looking for a new home <span>✳</span></span></div>
-          <div className="browse-tools"><div className="category-list">{categories.map((entry) => <button key={entry} className={`category-chip ${category === entry ? 'selected' : ''}`} onClick={() => setCategory(entry)}>{entry === 'All items' ? 'Everything' : entry}</button>)}</div><label className="condition-filter"><span>Condition</span><select value={condition} onChange={(event) => setCondition(event.target.value)}><option>Any condition</option><option>New</option><option>Like new</option><option>Good</option><option>Fair</option></select></label></div>
-          {query && <div className="results-label">Showing results for <strong>“{query}”</strong><button onClick={() => { setQuery(''); setSearchInput('') }}>Clear</button></div>}
+          <div className="browse-tools">
+            <div className="category-list">{categories.map((entry) => <button key={entry} className={`category-chip ${category === entry ? 'selected' : ''}`} onClick={() => setCategory(entry)}>{entry === 'All items' ? 'Everything' : entry}</button>)}</div>
+            <div className="quick-filters">
+              <label className="condition-filter"><span>Condition</span><select value={condition} onChange={(event) => setCondition(event.target.value)}><option>Any condition</option><option>New</option><option>Like new</option><option>Good</option><option>Fair</option></select></label>
+              <label className="condition-filter"><span>Availability</span><select value={status} onChange={(event) => setStatus(event.target.value as ItemStatus)}><option value="available">Available</option><option value="reserved">Reserved</option><option value="sold">Sold</option><option value="removed">Removed</option></select></label>
+            </div>
+          </div>
+          <form className="price-filter" onSubmit={applyPriceFilter}>
+            <span className="price-filter-title">PRICE RANGE</span>
+            <label>HK$<input type="number" min="0" step="0.01" inputMode="decimal" placeholder="Min" value={minPriceInput} onChange={(event) => setMinPriceInput(event.target.value)} aria-label="Minimum price"/></label>
+            <span className="price-separator">to</span>
+            <label>HK$<input type="number" min="0" step="0.01" inputMode="decimal" placeholder="Max" value={maxPriceInput} onChange={(event) => setMaxPriceInput(event.target.value)} aria-label="Maximum price"/></label>
+            <button className="filter-button" type="submit">Apply</button>
+            {filtersActive && <button className="filter-reset" type="button" onClick={clearFilters}>Clear all</button>}
+          </form>
+          {filtersActive && <div className="results-label">{query ? <>Showing results for <strong>“{query}”</strong></> : <>Showing <strong>filtered</strong> listings</>}<button onClick={clearFilters}>Clear filters</button></div>}
           {error && <div className="inline-alert" role="alert"><span>{error}</span><button onClick={() => setError('')} aria-label="Dismiss"><Icon name="close" size={16}/></button></div>}
-          {loading ? <div className="loading-grid">{[1,2,3,4].map((n) => <div className="skeleton-card" key={n}><div/><span/><span/></div>)}</div> : items.length ? <div className="item-grid">{items.map((item) => <ItemCard key={item.id} item={item} favorite={favorites.includes(item.id)} onOpen={() => openItem(item)} onFavorite={() => void toggleFavorite(item.id)}/>)}</div> : <div className="empty-state"><span className="empty-icon">⌕</span><h3>Nothing here just yet.</h3><p>Try another search or category. The next great find is out there.</p><button className="secondary-button" onClick={() => { setQuery(''); setSearchInput(''); setCategory('All items'); setCondition('Any condition') }}>Show everything</button></div>}
+          {loading ? <div className="loading-grid">{[1,2,3,4].map((n) => <div className="skeleton-card" key={n}><div/><span/><span/></div>)}</div> : items.length ? <div className="item-grid">{items.map((item) => <ItemCard key={item.id} item={item} favorite={favorites.includes(item.id)} onOpen={() => openItem(item)} onFavorite={() => void toggleFavorite(item)}/>)}</div> : <div className="empty-state"><span className="empty-icon">⌕</span><h3>Nothing here just yet.</h3><p>Try another search, price range or category. The next great find is out there.</p><button className="secondary-button" onClick={clearFilters}>Show everything</button></div>}
           <div className="browse-bottom"><span>Showing <strong>{items.length}</strong> good {items.length === 1 ? 'thing' : 'things'}</span><button className="subtle-link" onClick={() => openListing()}>List something of your own <Icon name="arrow" size={15}/></button></div>
         </section>
         <section className="seller-callout"><div className="callout-orbit">↗</div><div><div className="eyebrow">A LITTLE CLEARING OUT?</div><h2>Make space for<br/><em>what’s next.</em></h2><p>Your old favourite could be someone else’s new one.</p></div><button className="light-button" onClick={() => openListing()}>List an item <Icon name="arrow" size={16}/></button></section>
       </>}
 
-      {view === 'detail' && activeItem && <section className="content-page detail-page"><button className="back-link" onClick={goBrowse}>← Back to the marketplace</button><div className="detail-layout"><div className="detail-image"><ItemArt item={activeItem}/><div className="image-index">01 <span>/</span> 01</div></div><div className="detail-info"><div className="eyebrow"><span className="eyebrow-line"/>{activeItem.category.toUpperCase()}</div><div className="detail-title-row"><h1>{activeItem.title}</h1><button className={`detail-heart ${favorites.includes(activeItem.id) ? 'is-favorite' : ''}`} onClick={() => void toggleFavorite(activeItem.id)} aria-label="Save item"><Icon name="heart" size={20}/></button></div><div className="detail-price">HK${activeItem.price.toLocaleString()} <span>· {activeItem.condition}</span></div><p className="detail-description">{activeItem.description}</p><div className="seller-card"><span className="avatar avatar-large">{activeItem.sellerName.charAt(0)}</span><div><strong>{activeItem.sellerName}</strong><span>HKU community member</span></div><span className="seller-verified"><Icon name="check" size={15}/> Campus</span></div><div className="detail-location"><Icon name="pin" size={17}/><div><strong>Meet up around campus</strong><span>{activeItem.location}</span></div></div>{user?.id === activeItem.sellerId ? <div className="detail-actions"><button className="primary-button" onClick={() => openListing(activeItem)}>Edit your listing <Icon name="arrow" size={16}/></button><button className="secondary-button" onClick={() => void deleteItem(activeItem)}>Delete listing</button></div> : <><button className="primary-button order-cta" onClick={() => void placeOrder()} disabled={activeItem.status !== 'available'}>{activeItem.status === 'available' ? 'Request to buy' : 'No longer available'} <Icon name="arrow" size={16}/></button><p className="safe-note">No payment needed here. Arrange a safe campus meetup directly.</p></>}</div></div></section>}
+      {view === 'detail' && activeItem && <section className="content-page detail-page"><button className="back-link" onClick={goBrowse}>← Back to the marketplace</button><div className="detail-layout"><div className="detail-image"><ItemArt item={activeItem}/><div className="image-index">01 <span>/</span> 01</div></div><div className="detail-info"><div className="eyebrow"><span className="eyebrow-line"/>{activeItem.category.toUpperCase()}</div><div className="detail-title-row"><h1>{activeItem.title}</h1><button className={`detail-heart ${favorites.includes(activeItem.id) ? 'is-favorite' : ''}`} onClick={() => void toggleFavorite(activeItem)} aria-label="Save item"><Icon name="heart" size={20}/></button></div><div className="detail-price">HK${activeItem.price.toLocaleString()} <span>· {activeItem.condition}</span></div><p className="detail-description">{activeItem.description}</p><div className="seller-card"><span className="avatar avatar-large">{activeItem.sellerName.charAt(0)}</span><div><strong>{activeItem.sellerName}</strong><span>HKU community member</span></div><span className="seller-verified"><Icon name="check" size={15}/> Campus</span></div><div className="detail-location"><Icon name="pin" size={17}/><div><strong>Meet up around campus</strong><span>{activeItem.location}</span></div></div>{user?.id === activeItem.sellerId ? <div className="detail-actions"><button className="primary-button" onClick={() => openListing(activeItem)}>Edit your listing <Icon name="arrow" size={16}/></button><button className="secondary-button" onClick={() => void deleteItem(activeItem)}>Delete listing</button></div> : <><button className="primary-button order-cta" onClick={() => void placeOrder()} disabled={activeItem.status !== 'available'}>{activeItem.status === 'available' ? 'Request to buy' : 'No longer available'} <Icon name="arrow" size={16}/></button><p className="safe-note">No payment needed here. Arrange a safe campus meetup directly.</p></>}</div></div></section>}
 
       {view === 'auth' && <section className="auth-page"><div className="auth-art"><div className="auth-art-mark">↗</div><span className="eyebrow">GOOD THINGS GO AROUND</span><h2>Make room for<br/><em>a new favourite.</em></h2><p>A more thoughtful way to find what you need, and pass on what you don't.</p><span className="auth-art-bottom">A marketplace for the HKU community.</span></div><div className="auth-form-wrap"><button className="back-link" onClick={goBrowse}>← Back to browsing</button><div className="auth-form-inner"><div className="eyebrow"><span className="eyebrow-line"/>{authMode === 'login' ? 'WELCOME BACK' : 'JOIN THE COMMUNITY'}</div><h1>{authMode === 'login' ? 'Good to see you.' : 'Make yourself at home.'}</h1><p className="auth-intro">{authMode === 'login' ? 'Sign in to save finds and manage your listings.' : 'One small step towards a better kind of shopping.'}</p><form onSubmit={submitAuth} className="stacked-form">{authMode === 'register' && <label>Your name<input name="fullName" autoComplete="name" placeholder="e.g. Alex Chan" required/></label>}<label>HKU email<input name="email" type="email" autoComplete="email" placeholder="you@connect.hku.hk" required/></label><label>Password<input name="password" type="password" autoComplete={authMode === 'login' ? 'current-password' : 'new-password'} placeholder={authMode === 'login' ? 'Your password' : '8–72 bytes'} minLength={authMode === 'register' ? 8 : 1} maxLength={72} required/></label>{error && <div className="form-error" role="alert">{error}</div>}<button className="primary-button full-button" type="submit">{authMode === 'login' ? 'Sign in' : 'Create account'} <Icon name="arrow" size={16}/></button></form><p className="auth-switch">{authMode === 'login' ? 'New around here?' : 'Already part of the community?'} <button onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setError('') }}>{authMode === 'login' ? 'Create an account' : 'Sign in'}</button></p>{api.demoMode && <div className="demo-note"><span className="demo-dot"/> Demo mode is on. Any email and password work for sign in.</div>}</div></div></section>}
 
@@ -193,7 +254,7 @@ function App() {
 
       {view === 'my-listings' && <section className="content-page dashboard-page"><PageHeader eyebrow="YOUR LITTLE CORNER" title="Your listings." description="Keep an eye on the things you’ve passed along." action={<button className="primary-button" onClick={() => openListing()}><Icon name="plus" size={16}/> New listing</button>}/>{error && <div className="inline-alert"><span>{error}</span><button onClick={() => setError('')}><Icon name="close" size={16}/></button></div>}{myItems.length ? <div className="dashboard-list">{myItems.map((item) => <div className="dashboard-item" key={item.id}><ItemArt item={item} compact/><div className="dashboard-item-main"><div><strong>{item.title}</strong><span>{item.category} · {item.condition}</span></div><span className={`status-pill status-${item.status}`}>{item.status}</span></div><strong className="dashboard-price">HK${item.price.toLocaleString()}</strong><div className="dashboard-actions"><button onClick={() => openListing(item)}>Edit</button><button onClick={() => void deleteItem(item)}>Delete</button></div></div>)}</div> : <EmptyPanel title="Your first listing starts here." text="That book, lamp or pair of headphones could be someone else’s next favourite." button="List your first item" onClick={() => openListing()}/>}</section>}
 
-      {view === 'favorites' && <section className="content-page dashboard-page"><PageHeader eyebrow="SAVED FOR LATER" title="The ones you love." description="A little shortlist of things you might want to bring home." action={<button className="secondary-button" onClick={goBrowse}>Back to browsing <Icon name="arrow" size={15}/></button>}/>{error && <div className="inline-alert"><span>{error}</span><button onClick={() => setError('')}><Icon name="close" size={16}/></button></div>}{favoriteItems.length ? <div className="item-grid">{favoriteItems.map((item) => <ItemCard key={item.id} item={item} favorite onOpen={() => openItem(item)} onFavorite={() => void toggleFavorite(item.id)}/>)}</div> : <EmptyPanel title="Keep the good ones close." text="Tap the heart on a listing and it’ll be waiting here when you’re ready." button="Browse the marketplace" onClick={goBrowse}/>}</section>}
+      {view === 'favorites' && <section className="content-page dashboard-page"><PageHeader eyebrow="SAVED FOR LATER" title="The ones you love." description="A little shortlist of things you might want to bring home." action={<button className="secondary-button" onClick={goBrowse}>Back to browsing <Icon name="arrow" size={15}/></button>}/>{error && <div className="inline-alert"><span>{error}</span><button onClick={() => setError('')}><Icon name="close" size={16}/></button></div>}{favoriteItems.length ? <div className="item-grid">{favoriteItems.map((item) => <ItemCard key={item.id} item={item} favorite onOpen={() => openItem(item)} onFavorite={() => void toggleFavorite(item)}/>)}</div> : <EmptyPanel title="Keep the good ones close." text="Tap the heart on a listing and it’ll be waiting here when you’re ready." button="Browse the marketplace" onClick={goBrowse}/>}</section>}
 
       {view === 'orders' && <section className="content-page dashboard-page"><PageHeader eyebrow="A GOOD THING IN MOTION" title="Your swaps." description="The little details that help a good find find its way home." action={null}/>{error && <div className="inline-alert"><span>{error}</span><button onClick={() => setError('')}><Icon name="close" size={16}/></button></div>}{myOrders.length ? <div className="orders-list">{myOrders.map((order) => { const isSeller = order.sellerId === user?.id; return <article className="order-card" key={order.id}><div className="order-card-top"><div className="order-item-icon">{order.itemImage ? <img src={order.itemImage} alt=""/> : '✳'}</div><div className="order-item-heading"><span>{isSeller ? 'INCOMING REQUEST' : 'YOUR REQUEST'}</span><strong>{order.itemTitle}</strong><small>{isSeller ? `From ${order.buyerName}` : `Seller · ${order.sellerName}`}</small></div><span className={`status-pill status-${order.status}`}>{order.status}</span></div><div className="order-card-meta"><span><Icon name="pin" size={15}/>{order.pickupLocation}</span><strong>HK${order.agreedAmount.toLocaleString()}</strong></div><div className="order-card-actions">{order.status === 'pending' && (isSeller ? <><button className="primary-button small-button" onClick={() => void changeOrder(order, 'confirmed')}>Confirm request <Icon name="check" size={15}/></button><button className="text-button" onClick={() => void changeOrder(order, 'cancelled')}>Decline</button></> : <button className="text-button" onClick={() => void changeOrder(order, 'cancelled')}>Cancel request</button>)}{order.status === 'confirmed' && isSeller && <button className="primary-button small-button" onClick={() => void changeOrder(order, 'completed')}>Mark exchange complete <Icon name="check" size={15}/></button>}{order.status === 'confirmed' && !isSeller && <span className="order-hint">The seller confirmed — arrange your campus meetup.</span>}{order.status === 'completed' && <span className="order-hint completed-hint"><Icon name="check" size={15}/> This swap found its new home.</span>}</div></article> })}</div> : <EmptyPanel title="Your next good find is out there." text="When you request an item or someone wants one of yours, the details will show up here." button="Find something good" onClick={goBrowse}/>}</section>}
     </main>
