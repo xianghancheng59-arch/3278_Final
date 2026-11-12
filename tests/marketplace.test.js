@@ -70,6 +70,8 @@ test('public requests and malformed/oversized JSON receive consistent responses'
   await request(app).get('/api/categories').expect(200, []);
   await request(app).post('/api/items').send({}).expect(401);
   await request(app).get('/api/orders').expect(401);
+  await request(app).get('/api/favorites').expect(401);
+  await request(app).post('/api/items/1/favorite').send({}).expect(401);
   await request(app).get('/api/csrf').expect(401);
   await request(app).post('/api/items').type('json').send('{bad').expect(400);
   await request(app).post('/api/items').send({ description: 'x'.repeat(65536) }).expect(413).expect('Content-Type', /json/);
