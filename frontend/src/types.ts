@@ -69,18 +69,29 @@ export function itemFromApi(value: any): Item {
   }
 }
 
+function firstText(...values: unknown[]): string | undefined {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) return value.trim()
+  }
+  return undefined
+}
+
 export function orderFromApi(value: any): Order {
   const item = value.item ?? {}
+  const listing = value.listing ?? value.product ?? {}
   const buyer = value.buyer ?? {}
   const seller = value.seller ?? {}
+  const itemId = String(value.itemId ?? value.item_id ?? item.id ?? '')
+  const itemTitle = firstText(value.itemTitle, value.item_title, value.itemName, value.item_name, value.listingTitle, value.listing_title, value.title, item.title, item.name, listing.title, listing.name)
+    ?? (itemId ? `Item ${itemId}` : 'Untitled item')
   return {
     id: String(value.id), buyerId: String(value.buyerId ?? value.buyer_id ?? buyer.id ?? ''),
     buyerName: value.buyerName ?? value.buyer_name ?? buyer.full_name ?? 'Buyer',
     sellerId: String(value.sellerId ?? value.seller_id ?? seller.id ?? ''),
     sellerName: value.sellerName ?? value.seller_name ?? seller.full_name ?? 'Seller',
-    itemId: String(value.itemId ?? value.item_id ?? item.id ?? ''),
-    itemTitle: value.itemTitle ?? value.item_title ?? item.title ?? 'Campus listing',
-    itemImage: value.itemImage ?? value.item_image ?? item.image_url ?? '',
+    itemId,
+    itemTitle,
+    itemImage: value.itemImage ?? value.item_image ?? item.image_url ?? listing.image_url ?? '',
     agreedAmount: Number(value.agreedAmount ?? value.agreed_amount ?? 0),
     pickupLocation: value.pickupLocation ?? value.pickup_location ?? '',
     status: value.status ?? 'pending', createdAt: value.createdAt ?? value.created_at ?? new Date().toISOString(),
