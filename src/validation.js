@@ -89,18 +89,18 @@ function itemQuery(query) {
     if (key.endsWith('_id')) value = id(value);
     if (key === 'condition' && !conditions.includes(value)) throw new APIError('Invalid condition filter');
     if (key === 'status' && !states.includes(value)) throw new APIError('Invalid status filter');
-    clauses.push(`${column}=?`);
+    clauses.push(`i.${column}=?`);
     args.push(value);
   }
-  if (query.status === undefined) clauses.push("status='available'");
+  if (query.status === undefined) clauses.push("i.status='available'");
   if (query.q !== undefined) {
     const q = text(query.q, 160, false);
-    clauses.push('(title LIKE ? OR description LIKE ?)');
+    clauses.push('(i.title LIKE ? OR i.description LIKE ?)');
     args.push(`%${q}%`, `%${q}%`);
   }
   for (const [key, op] of [['min_price', '>='], ['max_price', '<=']]) {
     if (query[key] !== undefined) {
-      clauses.push(`price${op}?`);
+      clauses.push(`i.price${op}?`);
       args.push(money(query[key]));
     }
   }
@@ -115,7 +115,13 @@ function itemQuery(query) {
   }
   // Pass LIMIT/OFFSET as strings: MySQL can reject double-typed execute() parameters here.
   args.push(String(Number(limit)), String(Number(offset)));
-  return { sql: `SELECT * FROM items WHERE ${clauses.join(' AND ')} ORDER BY created_at DESC,id DESC LIMIT ? OFFSET ?`, args };
+  return {
+    sql: `SELECT i.*, u.full_name AS seller_name
+          FROM items i JOIN users u ON u.id=i.seller_id
+          WHERE ${clauses.join(' AND ')}
+          ORDER BY i.created_at DESC,i.id DESC LIMIT ? OFFSET ?`,
+    args
+  };
 }
 
 function publicRow(row) {
