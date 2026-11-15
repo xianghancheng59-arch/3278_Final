@@ -34,7 +34,7 @@ Attribute connectors do not indicate participation. The same user can act as a s
 
 ## Schema coverage and business rules
 
-The figure covers all **35 schema columns**: 29 drawn attributes plus six foreign-key columns represented by relationships. Foreign keys are introduced when converting the conceptual model into tables. Each entity's `id` is its primary key; the SQL also requires unique user emails and category names.
+The figure covers all **35 schema columns**: 29 drawn attributes plus five foreign-key columns represented by relationships. Foreign keys are introduced when converting the conceptual model into tables. Each entity's `id` is its primary key; the SQL also requires unique user emails and category names.
 
 An item may have multiple historical orders because cancelled orders are retained. **At most one active order** (pending/confirmed) is a separate backend rule, not a 1:1 cardinality or a guarantee of the current DDL. Buyer/seller checks and valid status transitions also require backend enforcement.
 
