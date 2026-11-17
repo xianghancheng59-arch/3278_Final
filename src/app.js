@@ -7,14 +7,15 @@ const { createAuthRouter, requireAuth } = require('./auth');
 const { createMarketplaceRouter } = require('./marketplace');
 const { APIError } = require('./validation');
 
-function createApp({ users, jwtSecret, isProduction = false, mountRoutes, pool, serveFrontend = false }) {
+function createApp({ users, jwtSecret, isProduction = false, mountRoutes, pool, serveFrontend = false,
+  trustProxy = process.env.RENDER === 'true' ? 1 : false }) {
   if (!users) throw new Error('A user repository is required.');
   if (typeof jwtSecret !== 'string' || Buffer.byteLength(jwtSecret) < 32) {
     throw new Error('JWT_SECRET must contain at least 32 bytes.');
   }
 
   const app = express();
-  if (process.env.RENDER === 'true') app.set('trust proxy', 1);
+  app.set('trust proxy', trustProxy);
   app.disable('x-powered-by');
   app.use(helmet({
     contentSecurityPolicy: { directives: { imgSrc: ["'self'", 'data:', 'blob:', 'https:'] } }
