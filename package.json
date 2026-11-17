@@ -9,12 +9,13 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "dev:frontend": "npm --prefix frontend run dev",
-    "test": "node --test"
+    "test": "node scripts/run-tests.js"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
+    "@libsql/client": "^0.17.4",
     "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",
     "dotenv": "^16.4.7",

@@ -25,7 +25,11 @@ INSERT INTO items (id,seller_id,category_id,title,description,price,item_conditi
 (107,3,3,'Notebook set','Three unused notebooks.',20.00,'new','available','Chi Wah',NULL,'2026-11-02 10:00:00','2026-11-02 10:00:00'),
 (108,4,3,'Free folders','Reusable folders; free pickup.',0.00,'fair','available','University Street',NULL,'2026-11-02 10:00:00','2026-11-02 10:00:00'),
 (109,1,1,'Old course notes','Withdrawn listing.',10.00,'fair','removed','Main Library',NULL,'2026-11-02 10:00:00','2026-11-03 10:00:00'),
-(110,4,2,'Mouse pad','Plain desk mouse pad.',15.00,'good','available','University Street',NULL,'2026-11-02 10:00:00','2026-11-04 10:00:00');
+(110,4,2,'Mouse pad','Plain desk mouse pad.',15.00,'good','available','University Street',NULL,'2026-11-02 10:00:00','2026-11-04 10:00:00'),
+(111, 3, 4, 'Non-stick pan & saucepan set', 'A clean frying pan and lidded saucepan.', 160, 'good', 'available', 'Jockey Club Student Village', '/images/products/cookware-set.jpg', '2026-11-09 10:00:00', '2026-11-09 10:00:00'),
+(112, 4, 4, 'Ceramic bowls & dinner plates', 'Four bowls and matching dinner plates without chips.', 120, 'like_new', 'available', 'Centennial Campus', '/images/products/dinnerware-set.jpg', '2026-11-09 10:00:00', '2026-11-09 10:00:00'),
+(113, 3, 4, 'Foldable clothes drying rack', 'A lightweight indoor rack that folds flat.', 95, 'good', 'available', 'Main Building', '/images/products/drying-rack.jpg', '2026-11-09 10:00:00', '2026-11-09 10:00:00'),
+(114, 4, 4, 'Two-tier dish drying rack', 'Stainless steel rack with a drip tray.', 75, 'like_new', 'available', 'Jockey Club Student Village', '/images/products/dish-rack.jpg', '2026-11-09 10:00:00', '2026-11-09 10:00:00');
 
 INSERT INTO favorites (user_id,item_id,created_at) VALUES
 (2,101,'2026-11-03 09:00:00'),(3,101,'2026-11-03 09:00:00'),

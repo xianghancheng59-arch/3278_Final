@@ -96,7 +96,7 @@ export function itemFromApi(value: any): Item {
     condition: conditionFromApi(value.condition ?? value.item_condition),
     status: value.status ?? 'available',
     location: value.location ?? '',
-    imageUrl: value.imageUrl || value.image_url || demoProductImages[id] || '',
+    imageUrl: value.imageUrl || value.image_url || '',
     createdAt: value.createdAt ?? value.created_at ?? new Date().toISOString(),
   }
 }
@@ -142,7 +142,6 @@ export function orderFromApi(value: any): Order {
       value.item_image ||
       item.image_url ||
       listing.image_url ||
-      demoProductImages[itemId] ||
       '',
     agreedAmount: Number(value.agreedAmount ?? value.agreed_amount ?? 0),
     pickupLocation: value.pickupLocation ?? value.pickup_location ?? '',

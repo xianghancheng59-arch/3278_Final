@@ -1,7 +1,7 @@
 -- Read-only examples using taught joins, filtering, aggregation and nested queries.
 -- Replace literal demo values with bound parameters in application code.
 
--- Available listings with seller and category. Seed: 6 rows.
+-- Available listings with seller and category. Seed: 10 rows.
 SELECT i.id, i.title, i.price, i.item_condition, u.full_name AS seller, c.name AS category
 FROM items AS i JOIN users AS u ON u.id=i.seller_id
 JOIN categories AS c ON c.id=i.category_id
