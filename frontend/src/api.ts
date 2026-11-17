@@ -1,21 +1,26 @@
-import { Item, ItemDraft, ItemStatus, Order, User, categories, conditionToApi, itemFromApi, orderFromApi } from './types'
+import { Item, ItemDraft, ItemStatus, Order, User, categories, conditionToApi, demoProductImages, itemFromApi, orderFromApi } from './types'
 
 const baseUrl = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
 const DEMO_ITEMS = 'campusswap:items:v1'
+const DEMO_SEED_VERSION = 'campusswap:seed-version'
 const DEMO_ORDERS = 'campusswap:orders:v1'
 const DEMO_FAVORITES = 'campusswap:favorites:v1'
 let csrfToken: string | null = null
 let categoryCache: Array<{ id: string; name: string }> | null = null
 
 const seedItems: Item[] = [
-  { id: '101', sellerId: 'u2', sellerName: 'Mia Chen', categoryId: '2', category: 'Electronics', title: 'Sony WH-1000XM4 headphones', description: 'Really good noise cancelling headphones, perfect for the library. Comes with the case and charging cable. Lightly used for one semester.', price: 1180, condition: 'Like new', status: 'available', location: 'Main Library', imageUrl: '', createdAt: '2026-11-02T10:00:00Z' },
-  { id: '102', sellerId: 'u3', sellerName: 'Ethan Lau', categoryId: '1', category: 'Textbooks', title: 'The Design of Everyday Things', description: 'A classic design book in great condition. No highlighting or notes. Edition 2013.', price: 95, condition: 'Good', status: 'available', location: 'Centennial Campus', imageUrl: '', createdAt: '2026-11-01T08:00:00Z' },
-  { id: '103', sellerId: 'u4', sellerName: 'Lily Wong', categoryId: '4', category: 'Dorm supplies', title: 'Minimal desk lamp', description: 'Warm light, three brightness levels and a USB-C charging port. Moving out so this one needs a new home.', price: 160, condition: 'Good', status: 'available', location: 'Jockey Club Student Village', imageUrl: '', createdAt: '2026-10-31T12:00:00Z' },
-  { id: '104', sellerId: 'u5', sellerName: 'Noah Lee', categoryId: '3', category: 'Stationery', title: 'Vintage canvas tote', description: 'A sturdy everyday tote with lots of room for your laptop and books. Washed and ready to go.', price: 45, condition: 'Like new', status: 'available', location: 'Main Building', imageUrl: '', createdAt: '2026-10-30T09:00:00Z' },
-  { id: '105', sellerId: 'u6', sellerName: 'Sophie Ng', categoryId: '5', category: 'Sports', title: 'Yoga mat · sage green', description: '6mm non-slip yoga mat. Used a handful of times and still in excellent shape.', price: 110, condition: 'Like new', status: 'available', location: 'Centennial Campus', imageUrl: '', createdAt: '2026-10-29T15:00:00Z' },
-  { id: '106', sellerId: 'u7', sellerName: 'Leo Chan', categoryId: '2', category: 'Electronics', title: 'Mechanical keyboard, 75%', description: 'Hot-swappable brown switches with a compact layout. Sounds lovely, works perfectly.', price: 420, condition: 'Good', status: 'available', location: 'Main Library', imageUrl: '', createdAt: '2026-10-28T11:00:00Z' },
-  { id: '107', sellerId: 'u8', sellerName: 'Ava Ho', categoryId: '1', category: 'Textbooks', title: 'Calculus: Early Transcendentals', description: 'Textbook with a few pencil notes in the first two chapters. All pages intact.', price: 130, condition: 'Fair', status: 'available', location: 'Main Building', imageUrl: '', createdAt: '2026-10-27T14:00:00Z' },
-  { id: '108', sellerId: 'u9', sellerName: 'Oliver Wong', categoryId: '4', category: 'Dorm supplies', title: 'Compact ceramic mug set', description: 'Two handmade stoneware mugs in a soft cream glaze. Great for morning coffee.', price: 80, condition: 'Good', status: 'available', location: 'Jockey Club Student Village', imageUrl: '', createdAt: '2026-10-26T16:00:00Z' },
+  { id: '101', sellerId: 'u2', sellerName: 'Mia Chen', categoryId: '2', category: 'Electronics', title: 'Sony WH-1000XM4 headphones', description: 'Really good noise cancelling headphones, perfect for the library. Comes with the case and charging cable. Lightly used for one semester.', price: 1180, condition: 'Like new', status: 'available', location: 'Main Library', imageUrl: demoProductImages['101'], createdAt: '2026-11-02T10:00:00Z' },
+  { id: '102', sellerId: 'u3', sellerName: 'Ethan Lau', categoryId: '1', category: 'Textbooks', title: 'The Design of Everyday Things', description: 'A classic design book in great condition. No highlighting or notes. Edition 2013.', price: 95, condition: 'Good', status: 'available', location: 'Centennial Campus', imageUrl: demoProductImages['102'], createdAt: '2026-11-01T08:00:00Z' },
+  { id: '103', sellerId: 'u4', sellerName: 'Lily Wong', categoryId: '4', category: 'Dorm supplies', title: 'Minimal desk lamp', description: 'Warm light, three brightness levels and a USB-C charging port. Moving out so this one needs a new home.', price: 160, condition: 'Good', status: 'available', location: 'Jockey Club Student Village', imageUrl: demoProductImages['103'], createdAt: '2026-10-31T12:00:00Z' },
+  { id: '104', sellerId: 'u5', sellerName: 'Noah Lee', categoryId: '3', category: 'Stationery', title: 'Vintage canvas tote', description: 'A sturdy everyday tote with lots of room for your laptop and books. Washed and ready to go.', price: 45, condition: 'Like new', status: 'available', location: 'Main Building', imageUrl: demoProductImages['104'], createdAt: '2026-10-30T09:00:00Z' },
+  { id: '105', sellerId: 'u6', sellerName: 'Sophie Ng', categoryId: '5', category: 'Sports', title: 'Yoga mat · sage green', description: '6mm non-slip yoga mat. Used a handful of times and still in excellent shape.', price: 110, condition: 'Like new', status: 'available', location: 'Centennial Campus', imageUrl: demoProductImages['105'], createdAt: '2026-10-29T15:00:00Z' },
+  { id: '106', sellerId: 'u7', sellerName: 'Leo Chan', categoryId: '2', category: 'Electronics', title: 'Mechanical keyboard, 75%', description: 'Hot-swappable brown switches with a compact layout. Sounds lovely, works perfectly.', price: 420, condition: 'Good', status: 'available', location: 'Main Library', imageUrl: demoProductImages['106'], createdAt: '2026-10-28T11:00:00Z' },
+  { id: '107', sellerId: 'u8', sellerName: 'Ava Ho', categoryId: '1', category: 'Textbooks', title: 'Calculus: Early Transcendentals', description: 'Textbook with a few pencil notes in the first two chapters. All pages intact.', price: 130, condition: 'Fair', status: 'available', location: 'Main Building', imageUrl: demoProductImages['107'], createdAt: '2026-10-27T14:00:00Z' },
+  { id: '108', sellerId: 'u9', sellerName: 'Oliver Wong', categoryId: '4', category: 'Dorm supplies', title: 'Compact ceramic mug set', description: 'Two handmade stoneware mugs in a soft cream glaze. Great for morning coffee.', price: 80, condition: 'Good', status: 'available', location: 'Jockey Club Student Village', imageUrl: demoProductImages['108'], createdAt: '2026-10-26T16:00:00Z' },
+  { id: '109', sellerId: 'u10', sellerName: 'Grace Ho', categoryId: '4', category: 'Dorm supplies', title: 'Non-stick pan & saucepan set', description: 'A gently used frying pan and lidded saucepan, both clean and ready for a new kitchen.', price: 160, condition: 'Good', status: 'available', location: 'Jockey Club Student Village', imageUrl: demoProductImages['109'], createdAt: '2026-11-09T10:00:00Z' },
+  { id: '110', sellerId: 'u11', sellerName: 'Daniel Wong', categoryId: '4', category: 'Dorm supplies', title: 'Ceramic bowls & dinner plates', description: 'A neat set of four white bowls and matching dinner plates. No chips or cracks.', price: 120, condition: 'Like new', status: 'available', location: 'Centennial Campus', imageUrl: demoProductImages['110'], createdAt: '2026-11-08T13:00:00Z' },
+  { id: '111', sellerId: 'u12', sellerName: 'Sophie Chan', categoryId: '4', category: 'Dorm supplies', title: 'Foldable clothes drying rack', description: 'Lightweight indoor drying rack that folds flat for easy storage in a small room.', price: 95, condition: 'Good', status: 'available', location: 'Main Building', imageUrl: demoProductImages['111'], createdAt: '2026-11-07T09:30:00Z' },
+  { id: '112', sellerId: 'u13', sellerName: 'Marcus Lee', categoryId: '4', category: 'Dorm supplies', title: 'Two-tier dish drying rack', description: 'Compact stainless-steel dish rack with drip tray. Fits plates, bowls and cups.', price: 75, condition: 'Like new', status: 'available', location: 'Jockey Club Student Village', imageUrl: demoProductImages['112'], createdAt: '2026-11-06T15:00:00Z' },
 ]
 
 function read<T>(key: string, fallback: T): T {
@@ -23,7 +28,23 @@ function read<T>(key: string, fallback: T): T {
   catch { return fallback }
 }
 function write<T>(key: string, value: T) { localStorage.setItem(key, JSON.stringify(value)) }
-function ensureSeed() { if (!localStorage.getItem(DEMO_ITEMS)) write(DEMO_ITEMS, seedItems) }
+function ensureSeed() {
+  if (!localStorage.getItem(DEMO_ITEMS)) {
+    write(DEMO_ITEMS, seedItems)
+    localStorage.setItem(DEMO_SEED_VERSION, '2')
+    return
+  }
+  const items = read<Item[]>(DEMO_ITEMS, seedItems)
+  const knownIds = new Set(items.map((item) => item.id))
+  const newSeedItems = localStorage.getItem(DEMO_SEED_VERSION) === '2'
+    ? []
+    : seedItems.filter((item) => Number(item.id) >= 109 && !knownIds.has(item.id))
+  const withImages = items.map((item) => item.imageUrl || !demoProductImages[item.id]
+    ? item
+    : { ...item, imageUrl: demoProductImages[item.id] })
+  if (withImages.some((item, index) => item !== items[index]) || newSeedItems.length) write(DEMO_ITEMS, [...withImages, ...newSeedItems])
+  localStorage.setItem(DEMO_SEED_VERSION, '2')
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const method = (init?.method ?? 'GET').toUpperCase()
@@ -124,7 +145,7 @@ export const api = {
     if (params.condition && params.condition !== 'Any condition') items = items.filter((item) => item.condition === params.condition)
     if (params.minPrice) items = items.filter((item) => item.price >= Number(params.minPrice))
     if (params.maxPrice) items = items.filter((item) => item.price <= Number(params.maxPrice))
-    return items
+    return items.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
   },
   async getItem(id: string): Promise<Item | undefined> {
     if (!demoOnly()) { const body = await request<any>(`/api/items/${id}`); return (await mapItems([body.item ?? body]))[0] }
