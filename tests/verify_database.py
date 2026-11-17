@@ -43,6 +43,7 @@ def main():
             process = subprocess.Popen([
                 str(server), '--no-defaults', f'--basedir={args.mysql_bin.resolve().parent}',
                 f'--datadir={data}', '--bind-address=127.0.0.1', f'--port={port}',
+                f'--socket={root / "mysql.sock"}', f'--pid-file={root / "mysql.pid"}',
                 '--mysqlx=OFF', '--skip-log-bin', f'--log-error={root / "error.log"}',
             ], stdout=log, stderr=log, creationflags=flags)
             command = [str(client), '--no-defaults', '--protocol=TCP', '--host=127.0.0.1',

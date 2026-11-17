@@ -61,3 +61,10 @@ html,body,#root,.app-shell{width:100%;max-width:100%;overflow-x:clip}
 @media(max-width:740px){.browse-tools{align-items:flex-start;flex-direction:column}.quick-filters{gap:10px}.price-filter-title{width:100%}.price-filter{padding-bottom:15px}.price-filter input{width:74px}}
 
 .item-art img{position:relative;z-index:0;display:block;width:100%;height:100%;object-fit:contain;padding:10px;background:#f4f3ee;box-sizing:border-box}.item-art-compact img{padding:4px}
+
+.delete-dialog { border: 1px solid #d4ddd2; border-radius: 16px; padding: 28px; width: min(520px, calc(100% - 32px)); color: #20392e; background: #fff; }
+.delete-dialog::backdrop { background: rgb(20 35 28 / 45%); }
+.delete-dialog h2 { margin: 0 0 16px; }
+.delete-dialog p { line-height: 1.6; }
+.delete-dialog-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-end; margin-top: 24px; }
+.delete-dialog button:disabled { opacity: .6; cursor: wait; }
