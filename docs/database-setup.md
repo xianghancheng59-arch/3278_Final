@@ -30,7 +30,7 @@ Use a fresh database. If `campusswap` already exists, choose another name in bot
 
 Expected dataset: **5 users, 5 categories, 10 items, 4 favorites and 5 orders**. Reports show six available items, two favorites for Bob, and an empty Sports category.
 
-Seed users have an unusable password marker (`!`), so they cannot log in. The authentication implementation must create real password hashes. Future backend configuration must supply the host, port (normally 3306), selected database, and credentials through local environment settings.
+Seed users have an unusable password marker (`!`). Register seller and buyer accounts through the website before recording. Set `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_DATABASE`, `MYSQL_USER` and `MYSQL_PASSWORD` in the backend's local `.env`. Connect your SQL client to the same host, port and database to see changes made on the website.
 
 ## Database verification
 
@@ -40,7 +40,7 @@ Requires Python 3.9+ and installed MySQL server/client binaries; no Python packa
 python tests/verify_database.py --mysql-bin 'C:\Program Files\MySQL\MySQL Server 8.0\bin'
 ```
 
-The script starts an isolated temporary MySQL server on a random loopback port, runs the SQL and **37 checks**, then shuts down and cleans up. It does not use your existing databases. Coverage includes keys, invalid data, order history and CRUD persistence; API, authentication and concurrent orders are not yet tested.
+The script starts an isolated temporary MySQL server on a random loopback port, runs the SQL and **37 checks**, then shuts down and cleans up. It does not use your existing databases. Coverage includes keys, invalid data, order history and CRUD persistence. The separate integration suite in the [README](../README.md#run-locally) exercises authentication, the marketplace API and concurrent orders.
 
 ## Troubleshooting
 

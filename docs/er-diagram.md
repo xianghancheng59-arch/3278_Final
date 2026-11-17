@@ -1,15 +1,17 @@
 # CampusSwap ER diagram
 
-The MVP uses six entities. A user may sell many items, buy many items, and favorite many items. A category groups many items. Each item may have zero or one order because the MVP treats each listing as a single physical item.
+## Conceptual model
+
+The relational schema contains five tables. At the conceptual level it has four independent entities - `USERS`, `CATEGORIES`, `ITEMS` and `ORDERS` - plus the associative entity `FAVORITES`. `FAVORITES` resolves the many-to-many relationship between users and items and records when each item was saved.
 
 ```mermaid
 erDiagram
     USERS ||--o{ ITEMS : sells
     CATEGORIES ||--o{ ITEMS : contains
-    USERS ||--o{ FAVORITES : creates
-    ITEMS ||--o{ FAVORITES : receives
+    USERS ||--o{ FAVORITES : saves
+    ITEMS ||--o{ FAVORITES : is_saved_in
     USERS ||--o{ ORDERS : places
-    ITEMS ||--o| ORDERS : "is ordered in"
+    ITEMS ||--o{ ORDERS : appears_in
 
     USERS {
         bigint id PK
@@ -45,8 +47,8 @@ erDiagram
     }
 
     FAVORITES {
-        bigint user_id FK
-        bigint item_id FK
+        bigint user_id PK, FK
+        bigint item_id PK, FK
         datetime created_at
     }
 
@@ -62,14 +64,37 @@ erDiagram
     }
 ```
 
-## Relationship explanation
+## Relationship mapping
 
-- `USERS` to `ITEMS`: one user can publish many items; every item has exactly one seller.
-- `CATEGORIES` to `ITEMS`: one category can contain many items; every item has one category.
-- `USERS` to `ITEMS` through `FAVORITES`: this is a many-to-many relationship resolved by the junction table. The composite primary key prevents duplicate favorites.
-- `USERS` to `ORDERS`: one user can place many orders; every order has one buyer.
-- `ITEMS` to `ORDERS`: an item can have zero or one order. A unique constraint on `orders.item_id` enforces the single-item rule.
+- `USERS` to `ITEMS`: one user can sell zero or many items; every item has exactly one seller through `items.seller_id`.
+- `CATEGORIES` to `ITEMS`: one category can contain zero or many items; every item belongs to exactly one category through `items.category_id`.
+- `USERS` to `FAVORITES`: one user can save zero or many items.
+- `ITEMS` to `FAVORITES`: one item can be saved by zero or many users.
+- `FAVORITES` uses the composite primary key `(user_id, item_id)`, so the same user cannot save the same item twice.
+- `USERS` to `ORDERS`: one user can place zero or many orders as a buyer; every order has exactly one buyer through `orders.buyer_id`.
+- `ITEMS` to `ORDERS`: one item can appear in zero or many historical orders; every order refers to exactly one item through `orders.item_id`.
 
-## Why the model is normalized
+## Order cardinality
 
-Seller and buyer data are stored once in `USERS`, category names are stored once in `CATEGORIES`, and many-to-many favorites are separated into `FAVORITES`. The order keeps transaction-time values such as `agreed_amount` and `pickup_location`, so later listing edits do not rewrite the transaction record.
+An item can have multiple historical orders because cancelled orders are retained. The database deliberately does not put a `UNIQUE` constraint on `orders.item_id`.
+
+The backend enforces the separate business rule that an item can have at most one active order whose status is `pending` or `confirmed`. It also coordinates the item status and order status inside transactions:
+
+| Action | Order status | Item status |
+| --- | --- | --- |
+| Buyer places an order | new `pending` | `available` to `reserved` |
+| Seller confirms | `pending` to `confirmed` | remains `reserved` |
+| Buyer or seller cancels | `pending` or `confirmed` to `cancelled` | `reserved` to `available` |
+| Seller completes handover | `confirmed` to `completed` | `reserved` to `sold` |
+
+Completed and cancelled orders are terminal. Concurrent buyers are prevented from creating two active orders for the same item by locking the item row and checking its status in a transaction.
+
+## Deletion and history
+
+Order history must remain understandable after a listing changes, so `agreed_amount` and `pickup_location` are stored as order snapshots.
+
+Foreign keys prevent hard deletion of items or users that are still referenced. The backend allows deletion only when an item has no order history. For such an unused item, it deletes the item's favorites and the item together in one transaction.
+
+## Normalization summary
+
+User and category data are stored once in their respective tables. The many-to-many favorite relationship is separated into `FAVORITES`, while order snapshots preserve transaction-time values independently of later item edits.

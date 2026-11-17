@@ -42,6 +42,9 @@ test('A login + C marketplace on disposable real MySQL', { skip: process.env.C_M
     }).expect(200);
     assert.equal(response.body[0].id, item.id);
     assert.equal(response.body[0].price, '120.00');
+    assert.equal(response.body[0].seller_name, seller.user.fullName);
+    const detail = await request(app).get(`/api/items/${item.id}`).expect(200);
+    assert.equal(detail.body.seller_name, seller.user.fullName);
     await request(app).get('/api/items').query({ q: "' OR 1=1 --" }).expect(200, []);
     await request(app).get('/api/items').query({ category_id: '1 OR 1=1' }).expect(400);
     await request(app).get('/api/items/9223372036854775808').expect(400);
@@ -60,6 +63,7 @@ test('A login + C marketplace on disposable real MySQL', { skip: process.env.C_M
     assert.equal(saved.length, 1);
     assert.equal(saved[0].id, unused.id);
     assert.equal(saved[0].title, 'Favorite integration');
+    assert.equal(saved[0].seller_name, seller.user.fullName);
     assert.deepEqual((await other.agent.get('/api/favorites').expect(200)).body, []);
 
     await send(seller, 'patch', `/api/items/${unused.id}`, { status: 'removed' }).expect(200);

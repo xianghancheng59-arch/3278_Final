@@ -80,8 +80,9 @@ function createMarketplaceRouter({ pool, requireAuth, jwtSecret }) {
   });
   router.get('/favorites', requireAuth, async (req, res) => {
     const [rows] = await pool.execute(
-      `SELECT i.* FROM favorites f
+      `SELECT i.*, u.full_name AS seller_name FROM favorites f
        JOIN items i ON i.id=f.item_id
+       JOIN users u ON u.id=i.seller_id
        WHERE f.user_id=?
        ORDER BY f.created_at DESC,i.id DESC`,
       [req.user.id]
@@ -94,7 +95,9 @@ function createMarketplaceRouter({ pool, requireAuth, jwtSecret }) {
     res.json(rows.map(publicRow));
   });
   router.get('/items/:id', async (req, res) => {
-    const row = await one(pool, 'SELECT * FROM items WHERE id=?', [id(req.params.id)]);
+    const row = await one(pool,
+      `SELECT i.*, u.full_name AS seller_name
+       FROM items i JOIN users u ON u.id=i.seller_id WHERE i.id=?`, [id(req.params.id)]);
     if (!row) throw new APIError('Item not found', 404);
     res.json(publicRow(row));
   });
@@ -172,7 +175,14 @@ function createMarketplaceRouter({ pool, requireAuth, jwtSecret }) {
     res.status(201).json(publicRow(values));
   });
   router.get('/orders', requireAuth, async (req, res) => {
-    const [rows] = await pool.execute('SELECT o.*,i.title,i.seller_id FROM orders o JOIN items i ON i.id=o.item_id WHERE o.buyer_id=? OR i.seller_id=? ORDER BY o.created_at DESC,o.id DESC', [req.user.id, req.user.id]);
+    const [rows] = await pool.execute(
+      `SELECT o.*, i.title, i.seller_id, buyer.full_name AS buyer_name, seller.full_name AS seller_name
+       FROM orders o
+       JOIN items i ON i.id=o.item_id
+       JOIN users buyer ON buyer.id=o.buyer_id
+       JOIN users seller ON seller.id=i.seller_id
+       WHERE o.buyer_id=? OR i.seller_id=?
+       ORDER BY o.created_at DESC,o.id DESC`, [req.user.id, req.user.id]);
     res.set('Cache-Control', 'no-store').json(rows.map(publicRow));
   });
   router.patch('/orders/:id/status', ...write, async (req, res) => {

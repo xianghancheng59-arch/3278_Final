@@ -17,7 +17,7 @@ The design and implementation are documented here so that each team member can b
 
 ## Core features
 
-- User registration, login, logout, and profile updates
+- User registration, login, and logout
 - Listing creation, browsing, search, editing, and deletion
 - Category, condition, price, and status filters
 - Favorites for logged-in users
