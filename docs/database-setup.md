@@ -40,7 +40,7 @@ mysql --host=127.0.0.1 --user=root --password --database=campusswap --default-ch
 
 The migration fills only missing image URLs for matching original demo rows and inserts the four household listings if their titles are not already present. It leaves user-created listings and existing non-empty image URLs unchanged. The four image paths point to the existing frontend assets under `/images/products/`.
 
-Seed users have an unusable password marker (`!`), so they cannot log in. The authentication implementation must create real password hashes. Future backend configuration must supply the host, port (normally 3306), selected database, and credentials through local environment settings.
+Seed users have an unusable password marker (`!`). Register seller and buyer accounts through the website before recording. Set `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_DATABASE`, `MYSQL_USER` and `MYSQL_PASSWORD` in the backend's local `.env`. Connect your SQL client to the same host, port and database to see changes made on the website.
 
 ## Database verification
 
@@ -50,7 +50,7 @@ Requires Python 3.9+ and installed MySQL server/client binaries; no Python packa
 python tests/verify_database.py --mysql-bin 'C:\Program Files\MySQL\MySQL Server 8.0\bin'
 ```
 
-The script starts an isolated temporary MySQL server on a random loopback port, runs the SQL and **37 checks**, then shuts down and cleans up. It does not use your existing databases. Coverage includes keys, invalid data, order history and CRUD persistence; API, authentication and concurrent orders are not yet tested.
+The script starts an isolated temporary MySQL server on a random loopback port, runs the SQL and **37 checks**, then shuts down and cleans up. It does not use your existing databases. Coverage includes keys, invalid data, order history and CRUD persistence. The separate integration suite in the [README](../README.md#run-locally) exercises authentication, the marketplace API and concurrent orders.
 
 ## Troubleshooting
 
@@ -60,4 +60,4 @@ The script starts an isolated temporary MySQL server on a random loopback port, 
 - **Database/table already exists:** stop and use a fresh database.
 - **CHECK constraints unsupported:** run `SELECT VERSION();` and use MySQL 8.0.16+.
 
-For the Node.js + Express authentication API and account page, follow [the authentication module run guide](authentication.md#run-locally). The complete stack requires Node.js 20+ in addition to the MySQL prerequisites above.
+For the complete Node.js + Express API and React marketplace, follow [the authentication module run guide](authentication.md#run-locally). The complete stack requires Node.js 20+ in addition to the MySQL prerequisites above.

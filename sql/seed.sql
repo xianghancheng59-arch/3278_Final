@@ -26,10 +26,10 @@ INSERT INTO items (id,seller_id,category_id,title,description,price,item_conditi
 (108,4,3,'Free folders','Reusable folders; free pickup.',0.00,'fair','available','University Street','https://inrorwxhrpqjlq5p.ldycdn.com/cloud/liBpmKolljSRmkmnmjnkjm/H4e7bb570577f4ed5943b04a1b0b049f2c.jpg','2026-11-02 10:00:00','2026-11-02 10:00:00'),
 (109,1,1,'Old course notes','Withdrawn listing.',10.00,'fair','removed','Main Library',NULL,'2026-11-02 10:00:00','2026-11-03 10:00:00'),
 (110,4,2,'Mouse pad','Plain desk mouse pad.',15.00,'good','available','University Street','https://images.unsplash.com/photo-1656071830624-06aa347f99a7?auto=format&fit=crop&w=1200&q=80','2026-11-02 10:00:00','2026-11-04 10:00:00'),
-(111,1,4,'Non-stick pan & saucepan set','A gently used frying pan and lidded saucepan, both clean and ready for a new kitchen.',160.00,'good','available','Jockey Club Student Village','/images/products/cookware-set.jpg','2026-11-09 10:00:00','2026-11-09 10:00:00'),
-(112,3,4,'Ceramic bowls & dinner plates','A neat set of four white bowls and matching dinner plates. No chips or cracks.',120.00,'like_new','available','Centennial Campus','/images/products/dinnerware-set.jpg','2026-11-08 13:00:00','2026-11-08 13:00:00'),
-(113,4,4,'Foldable clothes drying rack','Lightweight indoor drying rack that folds flat for easy storage in a small room.',95.00,'good','available','Main Building','/images/products/drying-rack.jpg','2026-11-07 09:30:00','2026-11-07 09:30:00'),
-(114,1,4,'Two-tier dish drying rack','Compact stainless-steel dish rack with drip tray. Fits plates, bowls and cups.',75.00,'like_new','available','Jockey Club Student Village','/images/products/dish-rack.jpg','2026-11-06 15:00:00','2026-11-06 15:00:00');
+(111, 3, 4, 'Non-stick pan & saucepan set', 'A clean frying pan and lidded saucepan.', 160, 'good', 'available', 'Jockey Club Student Village', '/images/products/cookware-set.jpg', '2026-11-09 10:00:00', '2026-11-09 10:00:00'),
+(112, 4, 4, 'Ceramic bowls & dinner plates', 'Four bowls and matching dinner plates without chips.', 120, 'like_new', 'available', 'Centennial Campus', '/images/products/dinnerware-set.jpg', '2026-11-09 10:00:00', '2026-11-09 10:00:00'),
+(113, 3, 4, 'Foldable clothes drying rack', 'A lightweight indoor rack that folds flat.', 95, 'good', 'available', 'Main Building', '/images/products/drying-rack.jpg', '2026-11-09 10:00:00', '2026-11-09 10:00:00'),
+(114, 4, 4, 'Two-tier dish drying rack', 'Stainless steel rack with a drip tray.', 75, 'like_new', 'available', 'Jockey Club Student Village', '/images/products/dish-rack.jpg', '2026-11-09 10:00:00', '2026-11-09 10:00:00');
 
 INSERT INTO favorites (user_id,item_id,created_at) VALUES
 (2,101,'2026-11-03 09:00:00'),(3,101,'2026-11-03 09:00:00'),

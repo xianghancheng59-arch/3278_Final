@@ -1,0 +1,24 @@
+name: Deploy CampusSwap to Render
+
+on:
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: campusswap-render-main
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Deploy the latest main to CampusSwap
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          : "${RENDER_DEPLOY_HOOK:?Set the RENDER_DEPLOY_HOOK repository secret}"
+          curl --fail --silent --show-error --output /dev/null \
+            --max-time 30 --request POST "$RENDER_DEPLOY_HOOK"

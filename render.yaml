@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: campusswap-comp3278
+    runtime: node
+    plan: free
+    region: singapore
+    repo: https://github.com/xianghancheng59-arch/3278_Final
+    branch: main
+    # GitHub Actions triggers the deploy for each push to main.
+    autoDeployTrigger: off
+    buildCommand: npm ci && npm ci --prefix frontend --include=dev && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SERVE_FRONTEND
+        value: "true"
+      - key: VITE_DEMO_MODE
+        value: "false"
+      - key: JWT_SECRET
+        sync: false
+      - key: SQLITE_URL
+        sync: false
+      - key: SQLITE_AUTH_TOKEN
+        sync: false

@@ -79,8 +79,8 @@ These can be added later without changing the core CRUD demonstration.
 
 - [ ] A new user can register and log in.
 - [ ] A seller can create, read, update, and delete a listing.
-- [ ] A visitor can search and filter listings.
-- [ ] A buyer can favorite a listing and place an order.
+- [x] A visitor can search and filter listings.
+- [x] A buyer can favorite a listing and place an order.
 - [ ] A buyer or seller can perform the permitted order status updates.
 - [ ] The database can be recreated and populated with sample data from the README instructions.
 - [ ] The two-minute demonstration video shows representative CRUD and database operations.

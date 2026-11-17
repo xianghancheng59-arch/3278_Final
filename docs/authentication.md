@@ -9,7 +9,7 @@
 - **Password hashing:** `bcryptjs` with work factor 12
 - **Authentication:** signed JWT in an HTTP-only, SameSite=Strict cookie; token lifetime is eight hours
 - **Security middleware:** Helmet response headers and rate limiting on registration/login
-- **Frontend:** semantic HTML, responsive CSS, and browser `fetch`; no frontend build step
+- **Frontend:** React/Vite marketplace production build served by Express, with the original account page retained as a fallback
 
 The auth module owns the account UI and `/api/auth/*` routes. It does not own listings, favorites, or orders. Other feature routes should use the `requireAuth` middleware supplied by the `mountRoutes` hook to verify the cookie and then read the authenticated account from `req.user`.
 
@@ -56,7 +56,7 @@ const app = createApp({
 });
 ```
 
-C's routes are now mounted by `createApp` when a `pool` is supplied (as done in `src/server.js`). The existing `mountRoutes` hook remains available for E and other features. After login, C's write requests also require a token from `/api/csrf`; see [C's frontend contract](member-c.md). Auth endpoints retain the contract above.
+C's routes and E's favorites routes are mounted by `createApp` when a `pool` is supplied (as done in `src/server.js`). The existing `mountRoutes` hook remains available for future modules. After login, marketplace and favorites writes also require a token from `/api/csrf`; see [C's frontend contract](member-c.md). Auth endpoints retain the contract above.
 
 The shared user shape is `{ id: string, email: string, fullName: string }`. Keep `id` as a string at the API boundary to preserve BIGINT precision. Public listing routes do not need authentication; mutations must authenticate and enforce ownership on the server.
 
@@ -65,11 +65,13 @@ The shared user shape is `{ id: string, email: string, fullName: string }`. Keep
 Follow [database-setup.md](database-setup.md) to create the `campusswap` database and apply the schema. Then:
 
 ```sh
-npm install
+npm ci
+npm ci --prefix frontend
 cp .env.example .env
+npm run build
 ```
 
-Edit `.env` with the local MySQL account and a random JWT secret of at least 32 characters, then run:
+Edit `.env` with the local MySQL account, a random JWT secret of at least 32 bytes, and `SERVE_FRONTEND=true`, then run:
 
 ```sh
 npm start

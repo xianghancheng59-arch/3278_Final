@@ -31,27 +31,27 @@ INSERT INTO items
 SELECT source.id,source.seller_id,source.category_id,source.title,source.description,source.price,
        source.item_condition,source.status,source.location,source.image_url,source.created_at,source.updated_at
 FROM (
-    SELECT 7000000000000000101 AS id,1 AS seller_id,4 AS category_id,
+    SELECT 7000000000000000101 AS id,3 AS seller_id,4 AS category_id,
       'Non-stick pan & saucepan set' AS title,
-      'A gently used frying pan and lidded saucepan, both clean and ready for a new kitchen.' AS description,
+      'A clean frying pan and lidded saucepan.' AS description,
       160.00 AS price,'good' AS item_condition,'available' AS status,
       'Jockey Club Student Village' AS location,'/images/products/cookware-set.jpg' AS image_url,
       '2026-11-09 10:00:00' AS created_at,'2026-11-09 10:00:00' AS updated_at
-    UNION ALL SELECT 7000000000000000102,3,4,
+    UNION ALL SELECT 7000000000000000102,4,4,
       'Ceramic bowls & dinner plates',
-      'A neat set of four white bowls and matching dinner plates. No chips or cracks.',
+      'Four bowls and matching dinner plates without chips.',
       120.00,'like_new','available','Centennial Campus','/images/products/dinnerware-set.jpg',
-      '2026-11-08 13:00:00','2026-11-08 13:00:00'
-    UNION ALL SELECT 7000000000000000103,4,4,
+      '2026-11-09 10:00:00','2026-11-09 10:00:00'
+    UNION ALL SELECT 7000000000000000103,3,4,
       'Foldable clothes drying rack',
-      'Lightweight indoor drying rack that folds flat for easy storage in a small room.',
+      'A lightweight indoor rack that folds flat.',
       95.00,'good','available','Main Building','/images/products/drying-rack.jpg',
-      '2026-11-07 09:30:00','2026-11-07 09:30:00'
+      '2026-11-09 10:00:00','2026-11-09 10:00:00'
     UNION ALL SELECT 7000000000000000104,1,4,
       'Two-tier dish drying rack',
-      'Compact stainless-steel dish rack with drip tray. Fits plates, bowls and cups.',
+      'Stainless steel rack with a drip tray.',
       75.00,'like_new','available','Jockey Club Student Village','/images/products/dish-rack.jpg',
-      '2026-11-06 15:00:00','2026-11-06 15:00:00'
+      '2026-11-09 10:00:00','2026-11-09 10:00:00'
 ) AS source
 WHERE NOT EXISTS (SELECT 1 FROM items WHERE items.title = source.title)
   AND NOT EXISTS (SELECT 1 FROM items WHERE items.id = source.id);
