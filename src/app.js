@@ -14,8 +14,11 @@ function createApp({ users, jwtSecret, isProduction = false, mountRoutes, pool, 
   }
 
   const app = express();
+  if (process.env.RENDER === 'true') app.set('trust proxy', 1);
   app.disable('x-powered-by');
-  app.use(helmet());
+  app.use(helmet({
+    contentSecurityPolicy: { directives: { imgSrc: ["'self'", 'data:', 'https:'] } }
+  }));
   app.use(express.json({ limit: '64kb' }));
   app.use(cookieParser());
   const authMiddleware = requireAuth(jwtSecret, users);

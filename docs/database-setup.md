@@ -28,7 +28,17 @@ SOURCE sql/queries.sql;
 
 Use a fresh database. If `campusswap` already exists, choose another name in both CREATE DATABASE and USE. To reset/rehearse, create another empty database and repeat these steps. The scripts do not drop tables or overwrite data; repeating the seed on populated tables produces duplicate-key errors.
 
-Expected dataset: **5 users, 5 categories, 10 items, 4 favorites and 5 orders**. Reports show six available items, two favorites for Bob, and an empty Sports category.
+Expected dataset: **5 users, 5 categories, 14 items, 4 favorites and 5 orders**. Reports show ten available items, two favorites for Bob, and an empty Sports category.
+
+## Update an existing database
+
+Back up the selected database first. From the repository root, select the database and run the migration once:
+
+```sh
+mysql --host=127.0.0.1 --user=root --password --database=campusswap --default-character-set=utf8mb4 < sql/migrations/2026-11-17-listing-images-and-household-items.sql
+```
+
+The migration fills only missing image URLs for matching original demo rows and inserts the four household listings if their titles are not already present. It leaves user-created listings and existing non-empty image URLs unchanged. The four image paths point to the existing frontend assets under `/images/products/`.
 
 Seed users have an unusable password marker (`!`). Register seller and buyer accounts through the website before recording. Set `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_DATABASE`, `MYSQL_USER` and `MYSQL_PASSWORD` in the backend's local `.env`. Connect your SQL client to the same host, port and database to see changes made on the website.
 

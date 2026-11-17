@@ -1,0 +1,10 @@
+{
+  "database": "campusswap_review_1117",
+  "existingUsersPreserved": 9,
+  "existingOrdersPreserved": 7,
+  "existingItemsPreserved": 11,
+  "householdItemsAdded": 4,
+  "totalItems": 15,
+  "idempotent": true,
+  "externalImages": 7
+}

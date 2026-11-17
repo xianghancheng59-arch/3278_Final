@@ -106,9 +106,11 @@ function createMarketplaceRouter({ pool, requireAuth, jwtSecret }) {
     await transaction(pool, async (db) => {
       const row = await lockedItem(db, itemId);
       if (row.status !== 'available') throw new APIError('Only available listings can be favorited', 409);
+      const conflict = pool.dialect === 'sqlite'
+        ? 'ON CONFLICT(user_id,item_id) DO NOTHING'
+        : 'ON DUPLICATE KEY UPDATE created_at=created_at';
       await db.execute(
-        `INSERT INTO favorites (user_id,item_id,created_at) VALUES (?,?,?)
-         ON DUPLICATE KEY UPDATE created_at=created_at`,
+        `INSERT INTO favorites (user_id,item_id,created_at) VALUES (?,?,?) ${conflict}`,
         [req.user.id, row.id, new Date()]
       );
     });
@@ -176,7 +178,7 @@ function createMarketplaceRouter({ pool, requireAuth, jwtSecret }) {
   });
   router.get('/orders', requireAuth, async (req, res) => {
     const [rows] = await pool.execute(
-      `SELECT o.*, i.title, i.seller_id, buyer.full_name AS buyer_name, seller.full_name AS seller_name
+      `SELECT o.*, i.title, i.image_url AS item_image, i.seller_id, buyer.full_name AS buyer_name, seller.full_name AS seller_name
        FROM orders o
        JOIN items i ON i.id=o.item_id
        JOIN users buyer ON buyer.id=o.buyer_id

@@ -65,7 +65,7 @@ function listing(value, creating = false) {
       out[key] = value;
     } else if (key === 'image_url') {
       out[key] = value === null ? null : text(value, 2048, false);
-      if (out[key]) {
+      if (out[key] && !/^\/images\/products\/[a-z0-9-]+\.jpg$/.test(out[key])) {
         let url;
         try { url = new URL(out[key]); } catch { throw new APIError('Invalid image URL'); }
         if (!['https:', 'http:'].includes(url.protocol)) throw new APIError('Invalid image URL');

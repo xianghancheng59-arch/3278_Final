@@ -10,8 +10,35 @@ test('A login + C marketplace on disposable real MySQL', { skip: process.env.C_M
   assert.equal(process.env.MYSQL_DATABASE, 'campusswap_c_test');
   const pool = createPool();
   t.after(() => pool.end());
+  await verifyMarketplace(t, pool);
+});
+
+test('SQLite marketplace and persistence after reconnect', { skip: !process.env.C_SQLITE_TEST_DIR }, async (t) => {
+  const path = require('node:path');
+  const { pathToFileURL } = require('node:url');
+  const { createSqlitePool } = require('../src/sqlite');
+  const directory = process.env.C_SQLITE_TEST_DIR;
+  const options = { url: pathToFileURL(path.join(directory, 'test.sqlite')).href };
+  let pool = await createSqlitePool(options);
+  try {
+    await verifyMarketplace(t, pool);
+    await pool.execute("UPDATE items SET price='91.25' WHERE id=113");
+    pool.end();
+    pool = await createSqlitePool(options);
+    assert.equal((await pool.execute('SELECT price FROM items WHERE id=113'))[0][0].price, '91.25');
+  } finally {
+    pool.end();
+  }
+});
+
+async function verifyMarketplace(t, pool) {
   const users = createUserRepository(pool), jwtSecret = 'isolated-integration-test-key-32-bytes';
   const app = createApp({ pool, users, jwtSecret });
+  const dorm = await request(app).get('/api/items').query({category_id: '4'}).expect(200);
+  assert.deepEqual(dorm.body.map(item => item.image_url).sort(), [
+    '/images/products/cookware-set.jpg', '/images/products/dinnerware-set.jpg',
+    '/images/products/dish-rack.jpg', '/images/products/drying-rack.jpg'
+  ]);
   const data = { title: 'Integration textbook', description: 'Clean copy', price: '120.00', item_condition: 'good', category_id: '1', location: 'HKU' };
   async function register(name) {
     const agent = request.agent(app);
@@ -77,7 +104,7 @@ test('A login + C marketplace on disposable real MySQL', { skip: process.env.C_M
   await t.test('BIGINT IDs survive database reads, edits and deletes exactly', async () => {
     const largeId = '4611686018427387903';
     await pool.execute(`INSERT INTO items (id,seller_id,category_id,title,description,price,item_condition,status,location,created_at,updated_at)
-      VALUES (?, ?, 1, 'Big ID', '', 1.00, 'good', 'available', 'HKU', UTC_TIMESTAMP(), UTC_TIMESTAMP())`, [largeId, seller.user.id]);
+      VALUES (?, ?, 1, 'Big ID', '', 1.00, 'good', 'available', 'HKU', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`, [largeId, seller.user.id]);
     assert.equal((await request(app).get(`/api/items/${largeId}`).expect(200)).body.id, largeId);
     await send(seller, 'patch', `/api/items/${largeId}`, { price: '2.01' }).expect(200);
     assert.equal((await row('items', largeId)).price, '2.01');
@@ -92,7 +119,7 @@ test('A login + C marketplace on disposable real MySQL', { skip: process.env.C_M
     await send(seller, 'patch', `/api/items/${unused.id}`, { status: 'removed' }).expect(200);
     await send(buyer, 'post', '/api/orders', { item_id: unused.id }).expect(409);
     await send(seller, 'patch', `/api/items/${unused.id}`, { status: 'available', title: 'Edited' }).expect(200);
-    await pool.execute('INSERT INTO favorites VALUES (?, ?, UTC_TIMESTAMP())', [buyer.user.id, unused.id]);
+    await pool.execute('INSERT INTO favorites VALUES (?, ?, CURRENT_TIMESTAMP)', [buyer.user.id, unused.id]);
     await send(seller, 'delete', `/api/items/${unused.id}`).expect(204);
     assert.equal((await pool.execute('SELECT * FROM favorites WHERE item_id=?', [unused.id]))[0].length, 0);
   });
@@ -168,4 +195,4 @@ test('A login + C marketplace on disposable real MySQL', { skip: process.env.C_M
     buyer.token = (await buyer.agent.get('/api/csrf').expect(200)).body.csrf_token;
     await send(buyer, 'post', '/api/items', data).expect(201);
   });
-});
+}

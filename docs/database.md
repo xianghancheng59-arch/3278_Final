@@ -54,7 +54,7 @@ Completed and cancelled orders are terminal. A sold item cannot be reopened. Ite
 
 ## Seed data
 
-All records are fictional and deterministic: **5 users, 5 categories, 10 items, 4 favorites, 5 orders**. IDs are users/categories 1–5, items 101–110 and orders 1001–1005.
+All records are fictional and deterministic: **5 users, 5 categories, 14 items, 4 favorites, 5 orders**. IDs are users/categories 1–5, items 101–114 and orders 1001–1005.
 
 | Fixture | Demonstration |
 |---|---|
@@ -71,7 +71,7 @@ All records are fictional and deterministic: **5 users, 5 categories, 10 items, 
 
 Seed password fields contain `!`, an unusable marker. There are no working demo login credentials. Create a real account through registration; login rejects the marker.
 
-Expected query results: 6 available items; Bob has 2 favorites and 2 orders; available-item counts by category ID are 2, 2, 2, 0, 0; the popular-item report returns 101; seller 1's listings without order history are 101, 103, 109.
+Expected query results: 10 available items; Bob has 2 favorites and 2 orders; available-item counts by category ID are 2, 2, 2, 4, 0; the popular-item report returns 101; seller 1's listings without order history are 101, 103, 109.
 
 ## Verification and course scope
 

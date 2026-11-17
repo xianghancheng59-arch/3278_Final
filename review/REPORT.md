@@ -2,6 +2,14 @@
 
 检查日期：2026-11-17。基线：远端 main 的 `19a598e`。检查分支：`codex/crud-review`。
 
+## 图片分支合并复查
+
+已将 `origin/feature/c-backend-image-data`（`0f77e81`）合入检查分支；该分支包含最新远端 main 的 SQLite/Render 配置。没有修改本地 main，也未推送或触发远端部署。本机仍使用真实 MySQL。
+
+新增依赖安装、前端构建、25 项默认测试（含 SQLite）、11 项真实 MySQL 测试、37 项数据库检查均通过。另有图片 CSP 回归测试通过：允许 HTTPS 商品图片，同时保留脚本与对象来源限制。迁移中 dish drying rack 的卖家已统一为 seed 的 seller 4。
+
+已备份并增量迁移本地检查库：保留原有 9 个账号、7 个订单和 11 件商品，新增 4 件家居商品；迁移重复执行不产生额外变更，证据见 `image-migration-evidence.json`。真实 HTTP + SQL CRUD、权限、收藏清理和订单历史保护再次通过；该验证会额外保留一件测试订单商品。浏览器确认首页 9 张商品图片均已加载，包括 4 张家居商品图片。下方“家居商品仅存在于演示数组”的原始缺口已解决。
+
 ## 结论
 
 数据库、Express API 和 React 前端已经能够连成真实 CRUD 流程，不需要再重写整个系统。检查分支在 `http://localhost:3001` 运行，使用独立数据库 `campusswap_review_1117`；前端未启用 localStorage 演示模式。

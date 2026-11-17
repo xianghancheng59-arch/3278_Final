@@ -2,6 +2,16 @@
 
 A full-stack campus second-hand marketplace with user authentication, item listings, search, favorites, and order management backed by a relational database.
 
+## Hosted SQLite and local MySQL
+
+Pushing or merging into `main` runs [the deployment workflow](.github/workflows/deploy-render.yml). It calls the existing Render service using the repository secret `RENDER_DEPLOY_HOOK`. GitHub Actions confirms that Render accepted the request. The Render **Deploys** page shows the deployed commit and whether the build went live. The [service configuration](render.yaml) specifies the free Singapore instance.
+
+The Render web service runs the React interface and Express API together. Its five marketplace tables live in a persistent Turso SQLite database. An empty SQLite database is initialized from `sql/schema-sqlite.sql` and `sql/seed.sql` in a single transaction. Restarts preserve listings, favorites and orders.
+
+Set `SQLITE_URL` and `SQLITE_AUTH_TOKEN` in Render's private environment, along with `SERVE_FRONTEND=true`, `NODE_ENV=production`, and a generated `JWT_SECRET` of at least 32 bytes. Build with `npm ci && npm ci --prefix frontend --include=dev && npm run build` and start with `npm start`. Rotate the database token in Render before it expires.
+
+For local SQLite, set `SQLITE_URL=file:campusswap.sqlite`. Without `SQLITE_URL`, the server uses the existing MySQL settings documented below. Run `npm test` to exercise the API against a disposable SQLite file, including concurrent ordering and reconnecting after a price change.
+
 ## Project scope
 
 CampusSwap helps students list, discover, and exchange second-hand items on campus. The MVP demonstrates database-backed create, read, update, and delete operations for listings, favorites, and orders.
@@ -73,9 +83,9 @@ The original project description and design documents above are retained. This s
 
 - [Database setup and verification](docs/database-setup.md): prerequisites, exact commands and troubleshooting.
 - [Database guide](docs/database.md): table definitions, constraints, seed scenarios and backend handoff.
-- [Schema](sql/schema.sql), [seed data](sql/seed.sql), and [query examples](sql/queries.sql).
+- [Schema](sql/schema.sql), [seed data](sql/seed.sql), [query examples](sql/queries.sql), and [household/image migration](sql/migrations/2026-11-17-listing-images-and-household-items.sql).
 - [Verification script](tests/verify_database.py): 37 checks passed on isolated MySQL 8.0.46.
 
-The dataset contains 5 users, 5 categories, 10 items, 4 favorites and 5 orders. At the time of B's original delivery, authentication, API and frontend implementation were pending. Authentication, marketplace APIs, the React interface and E's database-backed search/filter/favorite work are now integrated. Seed password markers remain unusable; register new accounts through the marketplace for seller/buyer demos.
+The dataset contains 5 users, 5 categories, 14 items, 4 favorites and 5 orders. For an existing database, back it up and apply the household/image migration once; it fills missing images only on matching original fixtures and adds the four household listings without changing user-created items. At the time of B's original delivery, authentication, API and frontend implementation were pending. Authentication, marketplace APIs, the React interface and E's database-backed search/filter/favorite work are now integrated. Seed password markers remain unusable; register new accounts through the marketplace for seller/buyer demos.
 
 Follow the setup guide to create a fresh database. The scripts do not overwrite existing data. Backend owners should use the database guide for the implemented order-history and deletion rules.
