@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from './api'
-import { categories, Condition, Item, ItemDraft, ItemStatus, Order, User } from './types'
+import { categories, Item, ItemDraft, ItemStatus, Order, User } from './types'
+import { ListingForm } from './ListingForm'
 
 type View = 'browse' | 'detail' | 'listing' | 'auth' | 'orders' | 'my-listings' | 'favorites'
 type IconName = 'search' | 'heart' | 'user' | 'plus' | 'arrow' | 'pin' | 'bag' | 'check' | 'close' | 'spark'
@@ -19,20 +20,28 @@ function readSession(): User | null {
 
 const visualConfig: Record<string, { emoji: string; className: string; label: string }> = {
   Electronics: { emoji: '🎧', className: 'art-electronics', label: 'ELECTRONICS' },
-  Books: { emoji: '📚', className: 'art-books', label: 'READ & REPEAT' },
-  'Home & living': { emoji: '💡', className: 'art-home', label: 'MAKE YOUR SPACE' },
-  Fashion: { emoji: '👜', className: 'art-fashion', label: 'GOOD STYLE, AGAIN' },
+  Textbooks: { emoji: '📚', className: 'art-books', label: 'READ & REPEAT' },
+  'Dorm supplies': { emoji: '💡', className: 'art-home', label: 'MAKE YOUR SPACE' },
+  Stationery: { emoji: '✏️', className: 'art-fashion', label: 'GOOD STYLE, AGAIN' },
   Sports: { emoji: '🧘', className: 'art-sports', label: 'MOVE WELL' },
   Other: { emoji: '✨', className: 'art-other', label: 'A LITTLE OF EVERYTHING' },
+}
+
+function ListingImage({ src, alt, children }: { src?: string; alt: string; children: React.ReactNode }) {
+  const [failedSource, setFailedSource] = useState<string | null>(null)
+  return src && src !== failedSource
+    ? <img src={src} alt={alt} onError={() => setFailedSource(src)}/>
+    : <>{children}</>
 }
 
 function ItemArt({ item, compact = false }: { item: Item; compact?: boolean }) {
   const art = visualConfig[item.category] ?? visualConfig.Other
   return <div className={`item-art ${art.className} ${compact ? 'item-art-compact' : ''}`}>
-    {item.imageUrl ? <img src={item.imageUrl} alt={item.title} /> : <>
+    <ListingImage src={item.imageUrl} alt={item.title}>
       <span className="art-kicker">{art.label}</span><span className="art-emoji" aria-hidden="true">{art.emoji}</span>
       <span className="art-orbit art-orbit-one"/><span className="art-orbit art-orbit-two"/>
-    </>}
+      {item.imageUrl && <span className="image-unavailable">Photo unavailable</span>}
+    </ListingImage>
   </div>
 }
 
@@ -61,6 +70,7 @@ function App() {
   const [editingItem, setEditingItem] = useState<Item | null>(null)
   const [pendingDelete, setPendingDelete] = useState<Item | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [savingListing, setSavingListing] = useState(false)
   const [query, setQuery] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [category, setCategory] = useState('All items')
@@ -113,7 +123,7 @@ function App() {
   function openAuth(mode: 'login' | 'register' = 'login') { setAuthMode(mode); setView('auth'); setMobileMenu(false) }
   function goBrowse() { setView('browse'); setActiveItem(null); setEditingItem(null); setMobileMenu(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }
   function openItem(item: Item) { setError(''); setActiveItem(item); setView('detail'); window.scrollTo({ top: 0, behavior: 'smooth' }) }
-  function openListing(item?: Item) { if (!user) return openAuth(); setEditingItem(item ?? null); setView('listing'); window.scrollTo({ top: 0, behavior: 'smooth' }) }
+  function openListing(item?: Item) { if (!user) return openAuth(); setError(''); setEditingItem(item ?? null); setView('listing'); window.scrollTo({ top: 0, behavior: 'smooth' }) }
   async function toggleFavorite(item: Item) {
     if (!user) return openAuth()
     const active = favorites.includes(item.id)
@@ -144,12 +154,17 @@ function App() {
     } catch (caught) { setError(caught instanceof Error ? caught.message : 'Could not sign you in.') }
   }
 
-  async function submitListing(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); if (!user) return openAuth(); setError('')
-    const form = new FormData(event.currentTarget)
-    const draft: ItemDraft = { title: String(form.get('title')).trim(), description: String(form.get('description')).trim(), price: Number(form.get('price')), condition: String(form.get('condition')) as Condition, category: String(form.get('category')), location: String(form.get('location')).trim(), imageUrl: String(form.get('imageUrl')).trim() }
-    try { await api.saveItem(draft, user, editingItem?.id); setNotice(editingItem ? 'Your listing has been updated.' : 'Your item is live. Good things find new homes.'); setView('my-listings'); setEditingItem(null); await refresh() }
+  async function submitListing(draft: ItemDraft) {
+    if (!user) return openAuth()
+    if (savingListing) return
+    setSavingListing(true); setError('')
+    try {
+      await api.saveItem(draft, user, editingItem?.id)
+      setNotice(editingItem ? 'Your listing has been updated.' : 'Your item is live. Good things find new homes.')
+      setView('my-listings'); setEditingItem(null); await refresh()
+    }
     catch (caught) { setError(caught instanceof Error ? caught.message : 'Could not save your listing.') }
+    finally { setSavingListing(false) }
   }
 
   async function deleteItem(item: Item) {
@@ -262,13 +277,13 @@ function App() {
 
       {view === 'auth' && <section className="auth-page"><div className="auth-art"><div className="auth-art-mark">↗</div><span className="eyebrow">GOOD THINGS GO AROUND</span><h2>Make room for<br/><em>a new favourite.</em></h2><p>A more thoughtful way to find what you need, and pass on what you don't.</p><span className="auth-art-bottom">A marketplace for the HKU community.</span></div><div className="auth-form-wrap"><button className="back-link" onClick={goBrowse}>← Back to browsing</button><div className="auth-form-inner"><div className="eyebrow"><span className="eyebrow-line"/>{authMode === 'login' ? 'WELCOME BACK' : 'JOIN THE COMMUNITY'}</div><h1>{authMode === 'login' ? 'Good to see you.' : 'Make yourself at home.'}</h1><p className="auth-intro">{authMode === 'login' ? 'Sign in to save finds and manage your listings.' : 'One small step towards a better kind of shopping.'}</p><form onSubmit={submitAuth} className="stacked-form">{authMode === 'register' && <label>Your name<input name="fullName" autoComplete="name" placeholder="e.g. Alex Chan" required/></label>}<label>HKU email<input name="email" type="email" autoComplete="email" placeholder="you@connect.hku.hk" required/></label><label>Password<input name="password" type="password" autoComplete={authMode === 'login' ? 'current-password' : 'new-password'} placeholder={authMode === 'login' ? 'Your password' : '8–72 bytes'} minLength={authMode === 'register' ? 8 : 1} maxLength={72} required/></label>{error && <div className="form-error" role="alert">{error}</div>}<button className="primary-button full-button" type="submit">{authMode === 'login' ? 'Sign in' : 'Create account'} <Icon name="arrow" size={16}/></button></form><p className="auth-switch">{authMode === 'login' ? 'New around here?' : 'Already part of the community?'} <button onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setError('') }}>{authMode === 'login' ? 'Create an account' : 'Sign in'}</button></p>{api.demoMode && <div className="demo-note"><span className="demo-dot"/> Demo mode is on. Any email and password work for sign in.</div>}</div></div></section>}
 
-      {view === 'listing' && <section className="content-page form-page"><button className="back-link" onClick={() => setView('my-listings')}>← Back to your listings</button><div className="form-page-header"><div className="eyebrow"><span className="eyebrow-line"/>{editingItem ? 'MAKE IT YOURS' : 'PASS IT ON'}</div><h1>{editingItem ? 'A little update.' : 'Give it a new chapter.'}</h1><p>{editingItem ? 'Keep the details fresh so the right person can find it.' : 'A few details help the next person find their new favourite.'}</p></div><form onSubmit={submitListing} className="listing-form"><div className="form-main"><label>What are you selling?<input name="title" defaultValue={editingItem?.title} placeholder="e.g. Sony headphones in great condition" maxLength={120} required/></label><label>Tell us a little about it<textarea name="description" defaultValue={editingItem?.description} placeholder="Condition, what’s included, why you loved it…" rows={5} maxLength={1200} required/></label><div className="form-two-columns"><label>Price <span className="input-prefix"><b>HK$</b><input name="price" type="number" min="0" step="0.01" defaultValue={editingItem?.price} placeholder="0.00" required/></span></label><label>Condition<select name="condition" defaultValue={editingItem?.condition ?? 'Good'}><option>New</option><option>Like new</option><option>Good</option><option>Fair</option></select></label></div><div className="form-two-columns"><label>Category<select name="category" defaultValue={editingItem?.category ?? 'Electronics'}>{categories.slice(1).map((entry) => <option key={entry}>{entry}</option>)}</select></label><label>Meetup location<input name="location" defaultValue={editingItem?.location} placeholder="e.g. Main Library" required/></label></div><label>Photo URL <span className="optional-label">OPTIONAL</span><input name="imageUrl" inputMode="url" defaultValue={editingItem?.imageUrl} placeholder="https://…"/></label><div className="privacy-hint"><Icon name="pin" size={17}/><span>Keep it public and simple: use a campus landmark, not your room number.</span></div></div><aside className="form-aside"><div className="preview-card"><div className="preview-placeholder"><span>{editingItem ? <ItemArt item={editingItem}/> : '✳'}</span></div><div className="preview-copy"><span>YOUR LISTING</span><strong>{editingItem?.title || 'Your item title'}</strong><small>HKU campus · Good things find new homes</small></div></div><div className="form-tip"><span>✳</span><div><strong>A good listing goes a long way.</strong><p>Clear details and an honest condition help everyone feel good about the swap.</p></div></div></aside><div className="form-footer">{error && <div className="form-error" role="alert">{error}</div>}<button className="secondary-button" type="button" onClick={() => setView('my-listings')}>Cancel</button><button className="primary-button" type="submit">{editingItem ? 'Save changes' : 'Publish listing'} <Icon name="arrow" size={16}/></button></div></form></section>}
+      {view === 'listing' && <section className="content-page form-page"><button className="back-link" onClick={() => setView('my-listings')}>← Back to your listings</button><div className="form-page-header"><div className="eyebrow"><span className="eyebrow-line"/>{editingItem ? 'MAKE IT YOURS' : 'PASS IT ON'}</div><h1>{editingItem ? 'A little update.' : 'Give it a new chapter.'}</h1><p>{editingItem ? 'Keep the details fresh so the right person can find it.' : 'A few details help the next person find their new favourite.'}</p></div><ListingForm key={editingItem?.id ?? "new"} item={editingItem} busy={savingListing} error={error} onSave={submitListing} onCancel={() => setView('my-listings')}/></section>}
 
       {view === 'my-listings' && <section className="content-page dashboard-page"><PageHeader eyebrow="YOUR LITTLE CORNER" title="Your listings." description="Keep an eye on the things you’ve passed along." action={<button className="primary-button" onClick={() => openListing()}><Icon name="plus" size={16}/> New listing</button>}/>{error && <div className="inline-alert"><span>{error}</span><button onClick={() => setError('')}><Icon name="close" size={16}/></button></div>}{myItems.length ? <div className="dashboard-list">{myItems.map((item) => <div className="dashboard-item" key={item.id}><ItemArt item={item} compact/><div className="dashboard-item-main"><div><strong>{item.title}</strong><span>{item.category} · {item.condition}</span></div><span className={`status-pill status-${item.status}`}>{item.status}</span></div><strong className="dashboard-price">HK${item.price.toLocaleString()}</strong><div className="dashboard-actions"><button onClick={() => openListing(item)}>Edit</button><button onClick={() => { setError(''); setPendingDelete(item) }}>Delete</button></div></div>)}</div> : <EmptyPanel title="Your first listing starts here." text="That book, lamp or pair of headphones could be someone else’s next favourite." button="List your first item" onClick={() => openListing()}/>}</section>}
 
       {view === 'favorites' && <section className="content-page dashboard-page"><PageHeader eyebrow="SAVED FOR LATER" title="The ones you love." description="A little shortlist of things you might want to bring home." action={<button className="secondary-button" onClick={goBrowse}>Back to browsing <Icon name="arrow" size={15}/></button>}/>{error && <div className="inline-alert"><span>{error}</span><button onClick={() => setError('')}><Icon name="close" size={16}/></button></div>}{favoriteItems.length ? <div className="item-grid">{favoriteItems.map((item) => <ItemCard key={item.id} item={item} favorite onOpen={() => openItem(item)} onFavorite={() => void toggleFavorite(item)}/>)}</div> : <EmptyPanel title="Keep the good ones close." text="Tap the heart on a listing and it’ll be waiting here when you’re ready." button="Browse the marketplace" onClick={goBrowse}/>}</section>}
 
-      {view === 'orders' && <section className="content-page dashboard-page"><PageHeader eyebrow="A GOOD THING IN MOTION" title="Your swaps." description="The little details that help a good find find its way home." action={null}/>{error && <div className="inline-alert"><span>{error}</span><button onClick={() => setError('')}><Icon name="close" size={16}/></button></div>}{myOrders.length ? <div className="orders-list">{myOrders.map((order) => { const isSeller = order.sellerId === user?.id; return <article className="order-card" key={order.id}><div className="order-card-top"><div className="order-item-icon">{order.itemImage ? <img src={order.itemImage} alt=""/> : '✳'}</div><div className="order-item-heading"><span>{isSeller ? 'INCOMING REQUEST' : 'YOUR REQUEST'}</span><strong>{order.itemTitle}</strong><small>{isSeller ? `From ${order.buyerName}` : `Seller · ${order.sellerName}`}</small></div><span className={`status-pill status-${order.status}`}>{order.status}</span></div><div className="order-card-meta"><span><Icon name="pin" size={15}/>{order.pickupLocation}</span><strong>HK${order.agreedAmount.toLocaleString()}</strong></div><div className="order-card-actions">{order.status === 'pending' && (isSeller ? <><button className="primary-button small-button" onClick={() => void changeOrder(order, 'confirmed')}>Confirm request <Icon name="check" size={15}/></button><button className="text-button" onClick={() => void changeOrder(order, 'cancelled')}>Decline</button></> : <button className="text-button" onClick={() => void changeOrder(order, 'cancelled')}>Cancel request</button>)}{order.status === 'confirmed' && isSeller && <button className="primary-button small-button" onClick={() => void changeOrder(order, 'completed')}>Mark exchange complete <Icon name="check" size={15}/></button>}{order.status === 'confirmed' && !isSeller && <span className="order-hint">The seller confirmed — arrange your campus meetup.</span>}{order.status === 'completed' && <span className="order-hint completed-hint"><Icon name="check" size={15}/> This swap found its new home.</span>}</div></article> })}</div> : <EmptyPanel title="Your next good find is out there." text="When you request an item or someone wants one of yours, the details will show up here." button="Find something good" onClick={goBrowse}/>}</section>}
+      {view === 'orders' && <section className="content-page dashboard-page"><PageHeader eyebrow="A GOOD THING IN MOTION" title="Your swaps." description="The little details that help a good find find its way home." action={null}/>{error && <div className="inline-alert"><span>{error}</span><button onClick={() => setError('')}><Icon name="close" size={16}/></button></div>}{myOrders.length ? <div className="orders-list">{myOrders.map((order) => { const isSeller = order.sellerId === user?.id; return <article className="order-card" key={order.id}><div className="order-card-top"><div className="order-item-icon"><ListingImage src={order.itemImage} alt={order.itemTitle}>✳</ListingImage></div><div className="order-item-heading"><span>{isSeller ? 'INCOMING REQUEST' : 'YOUR REQUEST'}</span><strong>{order.itemTitle}</strong><small>{isSeller ? `From ${order.buyerName}` : `Seller · ${order.sellerName}`}</small></div><span className={`status-pill status-${order.status}`}>{order.status}</span></div><div className="order-card-meta"><span><Icon name="pin" size={15}/>{order.pickupLocation}</span><strong>HK${order.agreedAmount.toLocaleString()}</strong></div><div className="order-card-actions">{order.status === 'pending' && (isSeller ? <><button className="primary-button small-button" onClick={() => void changeOrder(order, 'confirmed')}>Confirm request <Icon name="check" size={15}/></button><button className="text-button" onClick={() => void changeOrder(order, 'cancelled')}>Decline</button></> : <button className="text-button" onClick={() => void changeOrder(order, 'cancelled')}>Cancel request</button>)}{order.status === 'confirmed' && isSeller && <button className="primary-button small-button" onClick={() => void changeOrder(order, 'completed')}>Mark exchange complete <Icon name="check" size={15}/></button>}{order.status === 'confirmed' && !isSeller && <span className="order-hint">The seller confirmed — arrange your campus meetup.</span>}{order.status === 'completed' && <span className="order-hint completed-hint"><Icon name="check" size={15}/> This swap found its new home.</span>}</div></article> })}</div> : <EmptyPanel title="Your next good find is out there." text="When you request an item or someone wants one of yours, the details will show up here." button="Find something good" onClick={goBrowse}/>}</section>}
     </main>
 
     {pendingDelete && <DeleteConfirmation item={pendingDelete} busy={deleting} error={error}

@@ -2,6 +2,7 @@ const crypto = require('node:crypto');
 const { Router } = require('express');
 const { COOKIE_NAME } = require('./auth');
 const { APIError, id, text, body, listing, itemQuery, publicRow } = require('./validation');
+const { receivePhoto, preparePhoto, photoUrl, checkPhotoReference, writePhoto } = require('./photos');
 
 async function one(db, sql, args = []) {
   const [rows] = await db.execute(sql, args);
@@ -101,6 +102,12 @@ function createMarketplaceRouter({ pool, requireAuth, jwtSecret }) {
     if (!row) throw new APIError('Item not found', 404);
     res.json(publicRow(row));
   });
+  router.get('/items/:id/photo', async (req, res) => {
+    res.set('Cache-Control', 'no-cache, must-revalidate');
+    const row = await one(pool, 'SELECT jpeg_bytes,version FROM item_photos WHERE item_id=?', [id(req.params.id)]);
+    if (!row) throw new APIError('Photo not found', 404);
+    res.type('jpeg').set('ETag', `"${row.version}"`).send(Buffer.from(row.jpeg_bytes));
+  });
   router.post('/items/:id/favorite', ...write, async (req, res) => {
     const itemId = id(req.params.id);
     await transaction(pool, async (db) => {
@@ -124,14 +131,24 @@ function createMarketplaceRouter({ pool, requireAuth, jwtSecret }) {
     });
     res.status(204).end();
   });
-  router.post('/items', ...write, async (req, res) => {
+  router.post('/items', ...write, receivePhoto, async (req, res) => {
     const values = listing(req.body, true), now = new Date();
+    checkPhotoReference(values);
+    const photo = await preparePhoto(req.file);
     Object.assign(values, { seller_id: req.user.id, status: 'available', created_at: now, updated_at: now });
-    await transaction(pool, (db) => insert(db, 'items', values));
+    await transaction(pool, async (db) => {
+      await insert(db, 'items', values);
+      if (photo) {
+        values.image_url = photoUrl(values.id, photo.version);
+        await writePhoto(db, values.id, photo, null, values);
+        await db.execute('UPDATE items SET image_url=? WHERE id=?', [values.image_url, values.id]);
+      }
+    });
     res.status(201).json(publicRow(values));
   });
-  router.patch('/items/:id', ...write, async (req, res) => {
-    const values = listing(req.body);
+  router.patch('/items/:id', ...write, receivePhoto, async (req, res) => {
+    const values = listing(req.file ? { image_url: null, ...req.body } : req.body);
+    const photo = await preparePhoto(req.file);
     const row = await transaction(pool, async (db) => {
       const row = await lockedItem(db, req.params.id);
       owned(row, req.user.id);
@@ -141,6 +158,9 @@ function createMarketplaceRouter({ pool, requireAuth, jwtSecret }) {
       if (await one(db, "SELECT id FROM orders WHERE item_id=? AND status='completed' LIMIT 1 FOR UPDATE", [row.id])) {
         throw new APIError('Sold listing cannot change', 409);
       }
+      checkPhotoReference(values, row);
+      if (photo) values.image_url = photoUrl(row.id, photo.version);
+      await writePhoto(db, row.id, photo, row, values);
       values.updated_at = new Date();
       await db.execute(`UPDATE items SET ${Object.keys(values).map((key) => `${key}=?`).join(',')} WHERE id=?`, [...Object.values(values), row.id]);
       return { ...row, ...values };
@@ -155,6 +175,7 @@ function createMarketplaceRouter({ pool, requireAuth, jwtSecret }) {
         throw new APIError('Order history prevents deletion', 409);
       }
       await db.execute('DELETE FROM favorites WHERE item_id=?', [row.id]);
+      await writePhoto(db, row.id, null, row, { image_url: null });
       await db.execute('DELETE FROM items WHERE id=?', [row.id]);
     });
     res.status(204).end();

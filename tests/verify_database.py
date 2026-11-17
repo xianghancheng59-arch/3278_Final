@@ -82,7 +82,7 @@ def main():
                 print('MySQL ' + sql('SELECT VERSION();'), flush=True)
                 sql((repo / 'sql/schema.sql').read_text(encoding='utf-8'))
                 sql((repo / 'sql/seed.sql').read_text(encoding='utf-8'))
-                for table, count in [('users',5),('categories',5),('items',14),('favorites',4),('orders',5)]:
+                for table, count in [('users',5),('categories',5),('items',16),('favorites',4),('orders',5)]:
                     check(f'{table} seed count', sql(f'SELECT COUNT(*) FROM {table};'), str(count))
                 sql((repo / 'sql/queries.sql').read_text(encoding='utf-8'))
                 check('zero price permitted',sql('SELECT price FROM items WHERE id=108;'),'0.00')

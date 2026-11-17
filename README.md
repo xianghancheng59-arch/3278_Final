@@ -6,7 +6,7 @@ A full-stack campus second-hand marketplace with user authentication, item listi
 
 Pushing or merging into `main` runs [the deployment workflow](.github/workflows/deploy-render.yml). It calls the existing Render service using the repository secret `RENDER_DEPLOY_HOOK`. GitHub Actions confirms that Render accepted the request. The Render **Deploys** page shows the deployed commit and whether the build went live. The [service configuration](render.yaml) specifies the free Singapore instance.
 
-The Render web service runs the React interface and Express API together. Its five marketplace tables live in a persistent Turso SQLite database. An empty SQLite database is initialized from `sql/schema-sqlite.sql` and `sql/seed.sql` in a single transaction. Restarts preserve listings, favorites and orders.
+The Render web service runs the React interface and Express API together. Its six marketplace tables, including uploaded listing photos, live in a persistent Turso SQLite database. An empty SQLite database is initialized from `sql/schema-sqlite.sql` and `sql/seed.sql` in a single transaction. Restarts preserve listings, favorites and orders.
 
 Set `SQLITE_URL` and `SQLITE_AUTH_TOKEN` in Render's private environment, along with `SERVE_FRONTEND=true`, `NODE_ENV=production`, and a generated `JWT_SECRET` of at least 32 bytes. Build with `npm ci && npm ci --prefix frontend --include=dev && npm run build` and start with `npm start`. Rotate the database token in Render before it expires.
 
@@ -29,13 +29,14 @@ The design and implementation are documented here so that each team member can b
 
 - User registration, login, and logout
 - Listing creation, browsing, search, editing, and deletion
+- Seller photo upload, replacement and removal with persistent database storage ([guide](docs/photo-updates.md))
 - Category, condition, price, and status filters
 - Favorites for logged-in users
 - Single-item order flow with seller and buyer status updates
 
 ## Backend stack
 
-The backend uses **Node.js 20+, Express 5, MySQL 8, and `mysql2/promise`**, with a React/Vite marketplace and API served from the same origin. Authentication uses bcrypt password hashes and an HTTP-only signed JWT cookie. Protected feature routes receive the shared `req.user.id` through the auth middleware; the original HTML account page remains available as a fallback when the React build is disabled.
+The backend uses **Node.js 20.9+, Express 5, MySQL 8, and `mysql2/promise`**, with a React/Vite marketplace and API served from the same origin. Authentication uses bcrypt password hashes and an HTTP-only signed JWT cookie. Protected feature routes receive the shared `req.user.id` through the auth middleware; the original HTML account page remains available as a fallback when the React build is disabled.
 
 ## Run locally
 
@@ -72,7 +73,7 @@ Run `npm test` for the authentication and marketplace unit/API tests without a M
 python3 scripts/test-mysql.py --mysql-bin /path/to/mysql/bin
 ```
 
-Verified results: `npm test` reports 14 passing tests with the real-MySQL suite skipped; the disposable-MySQL script reports 11 passing tests with no failures.
+Verified results: `npm test` reports 28 passing tests with the real-MySQL suite skipped; the disposable-MySQL script reports 13 passing tests with the SQLite suite skipped. Photo upload, replacement, removal, ownership and transaction rollback are included.
 
 The built React marketplace, authentication, listing/order APIs and database-backed favorites run together on port 3000. See [Member E's guide](docs/member-e.md) for search/filter behavior, test coverage and the demonstration sequence.
 
@@ -86,6 +87,6 @@ The original project description and design documents above are retained. This s
 - [Schema](sql/schema.sql), [seed data](sql/seed.sql), [query examples](sql/queries.sql), and [household/image migration](sql/migrations/2026-11-17-listing-images-and-household-items.sql).
 - [Verification script](tests/verify_database.py): 37 checks passed on isolated MySQL 8.0.46.
 
-The dataset contains 5 users, 5 categories, 14 items, 4 favorites and 5 orders. For an existing database, back it up and apply the household/image migration once; it fills missing images only on matching original fixtures and adds the four household listings without changing user-created items. At the time of B's original delivery, authentication, API and frontend implementation were pending. Authentication, marketplace APIs, the React interface and E's database-backed search/filter/favorite work are now integrated. Seed password markers remain unusable; register new accounts through the marketplace for seller/buyer demos.
+The dataset contains 5 users, 5 categories, 16 items, 4 favorites and 5 orders. For an existing database, follow the migrations in [the photo guide](docs/photo-updates.md) to enable uploads and add the two reference products. The household/image migration fills missing images only on matching original fixtures and adds the four household listings without changing user-created items. At the time of B's original delivery, authentication, API and frontend implementation were pending. Authentication, marketplace APIs, the React interface and E's database-backed search/filter/favorite work are now integrated. Seed password markers remain unusable; register new accounts through the marketplace for seller/buyer demos.
 
 Follow the setup guide to create a fresh database. The scripts do not overwrite existing data. Backend owners should use the database guide for the implemented order-history and deletion rules.

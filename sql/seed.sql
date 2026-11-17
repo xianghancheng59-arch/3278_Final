@@ -29,7 +29,9 @@ INSERT INTO items (id,seller_id,category_id,title,description,price,item_conditi
 (111, 3, 4, 'Non-stick pan & saucepan set', 'A clean frying pan and lidded saucepan.', 160, 'good', 'available', 'Jockey Club Student Village', '/images/products/cookware-set.jpg', '2026-11-09 10:00:00', '2026-11-09 10:00:00'),
 (112, 4, 4, 'Ceramic bowls & dinner plates', 'Four bowls and matching dinner plates without chips.', 120, 'like_new', 'available', 'Centennial Campus', '/images/products/dinnerware-set.jpg', '2026-11-09 10:00:00', '2026-11-09 10:00:00'),
 (113, 3, 4, 'Foldable clothes drying rack', 'A lightweight indoor rack that folds flat.', 95, 'good', 'available', 'Main Building', '/images/products/drying-rack.jpg', '2026-11-09 10:00:00', '2026-11-09 10:00:00'),
-(114, 4, 4, 'Two-tier dish drying rack', 'Stainless steel rack with a drip tray.', 75, 'like_new', 'available', 'Jockey Club Student Village', '/images/products/dish-rack.jpg', '2026-11-09 10:00:00', '2026-11-09 10:00:00');
+(114, 4, 4, 'Two-tier dish drying rack', 'Stainless steel rack with a drip tray.', 75, 'like_new', 'available', 'Jockey Club Student Village', '/images/products/dish-rack.jpg', '2026-11-09 10:00:00', '2026-11-09 10:00:00'),
+(115,1,2,'NVIDIA GeForce RTX 5090','Demo listing for a GeForce RTX 5090 graphics card. Manufacturer reference photo; arrange inspection before purchase.',18000.00,'like_new','available','Main Library','/images/products/rtx-5090.jpg','2026-11-17 13:00:00','2026-11-17 13:00:00'),
+(116,4,4,'Dehumidifier','Demo listing for a MeacoDry Arete One 12L dehumidifier. Manufacturer reference photo; arrange inspection before purchase.',600.00,'good','available','Jockey Club Student Village','/images/products/dehumidifier.jpg','2026-11-17 13:00:00','2026-11-17 13:00:00');
 
 INSERT INTO favorites (user_id,item_id,created_at) VALUES
 (2,101,'2026-11-03 09:00:00'),(3,101,'2026-11-03 09:00:00'),

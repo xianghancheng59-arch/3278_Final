@@ -2,6 +2,10 @@
 
 检查日期：2026-11-17。基线：远端 main 的 `19a598e`。检查分支：`codex/crud-review`。
 
+## 卖家照片功能更新
+
+已将截图中的两条测试记录替换为 RTX 5090 与抽湿机，并加入卖家照片上传、更换、移除及实时预览。MySQL 的 item_photos 表保存图片二进制，SQLite同样支持持久化。网页上传/替换/刷新/仅改价保留照片/错误文件/移除均已实测，临时测试商品已清理；自动化28项、真实MySQL13项和数据库37项检查通过。完整操作、接口和迁移说明见 [photo-updates.md](../docs/photo-updates.md)，浏览器SQL证据见 [photo-browser-evidence.json](photo-browser-evidence.json)。下文保留此前检查记录。
+
 ## 图片分支合并复查
 
 已将 `origin/feature/c-backend-image-data`（`0f77e81`）合入检查分支；该分支包含最新远端 main 的 SQLite/Render 配置。没有修改本地 main，也未推送或触发远端部署。本机仍使用真实 MySQL。

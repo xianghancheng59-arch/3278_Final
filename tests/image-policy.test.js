@@ -18,6 +18,7 @@ test('page policy permits local and HTTPS listing photos while retaining script 
 
   assert.ok(directives['img-src'].includes("'self'"), 'bundled /images/products assets must load');
   assert.ok(directives['img-src'].includes('https:'), 'HTTPS seed and user listing photos must load');
+  assert.ok(directives['img-src'].includes('blob:'), 'local upload previews must load');
   assert.ok(!directives['img-src'].includes('*'), 'image access must not allow every scheme');
   assert.deepEqual(directives['script-src'], ["'self'"]);
   assert.deepEqual(directives['script-src-attr'], ["'none'"]);

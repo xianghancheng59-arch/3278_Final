@@ -3,6 +3,7 @@ import { Item, ItemDraft, ItemStatus, Order, User, categories, conditionToApi, d
 const baseUrl = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
 const DEMO_ITEMS = 'campusswap:items:v1'
 const DEMO_SEED_VERSION = 'campusswap:seed-version'
+const CURRENT_DEMO_SEED_VERSION = '3'
 const DEMO_ORDERS = 'campusswap:orders:v1'
 const DEMO_FAVORITES = 'campusswap:favorites:v1'
 let csrfToken: string | null = null
@@ -21,6 +22,8 @@ const seedItems: Item[] = [
   { id: '110', sellerId: 'u11', sellerName: 'Daniel Wong', categoryId: '4', category: 'Dorm supplies', title: 'Ceramic bowls & dinner plates', description: 'A neat set of four white bowls and matching dinner plates. No chips or cracks.', price: 120, condition: 'Like new', status: 'available', location: 'Centennial Campus', imageUrl: demoProductImages['110'], createdAt: '2026-11-08T13:00:00Z' },
   { id: '111', sellerId: 'u12', sellerName: 'Sophie Chan', categoryId: '4', category: 'Dorm supplies', title: 'Foldable clothes drying rack', description: 'Lightweight indoor drying rack that folds flat for easy storage in a small room.', price: 95, condition: 'Good', status: 'available', location: 'Main Building', imageUrl: demoProductImages['111'], createdAt: '2026-11-07T09:30:00Z' },
   { id: '112', sellerId: 'u13', sellerName: 'Marcus Lee', categoryId: '4', category: 'Dorm supplies', title: 'Two-tier dish drying rack', description: 'Compact stainless-steel dish rack with drip tray. Fits plates, bowls and cups.', price: 75, condition: 'Like new', status: 'available', location: 'Jockey Club Student Village', imageUrl: demoProductImages['112'], createdAt: '2026-11-06T15:00:00Z' },
+  { id: '113', sellerId: 'u14', sellerName: 'Campus Demo Seller', categoryId: '2', category: 'Electronics', title: 'NVIDIA GeForce RTX 5090', description: 'Demo listing for a GeForce RTX 5090 graphics card. Reference product photo; ask the seller for current photos and condition before arranging a purchase.', price: 18000, condition: 'Like new', status: 'available', location: 'Main Library', imageUrl: demoProductImages['113'], createdAt: '2026-11-17T12:00:00Z' },
+  { id: '114', sellerId: 'u15', sellerName: 'Campus Demo Seller', categoryId: '4', category: 'Dorm supplies', title: 'Dehumidifier', description: 'Demo listing for a room dehumidifier. Reference product photo; check the actual model, capacity and condition with the seller before arranging a purchase.', price: 600, condition: 'Good', status: 'available', location: 'Jockey Club Student Village', imageUrl: demoProductImages['114'], createdAt: '2026-11-17T12:01:00Z' },
 ]
 
 function read<T>(key: string, fallback: T): T {
@@ -31,27 +34,28 @@ function write<T>(key: string, value: T) { localStorage.setItem(key, JSON.string
 function ensureSeed() {
   if (!localStorage.getItem(DEMO_ITEMS)) {
     write(DEMO_ITEMS, seedItems)
-    localStorage.setItem(DEMO_SEED_VERSION, '2')
+    localStorage.setItem(DEMO_SEED_VERSION, CURRENT_DEMO_SEED_VERSION)
     return
   }
   const items = read<Item[]>(DEMO_ITEMS, seedItems)
   const knownIds = new Set(items.map((item) => item.id))
-  const newSeedItems = localStorage.getItem(DEMO_SEED_VERSION) === '2'
+  const previousVersion = localStorage.getItem(DEMO_SEED_VERSION)
+  const newSeedItems = previousVersion === CURRENT_DEMO_SEED_VERSION
     ? []
-    : seedItems.filter((item) => Number(item.id) >= 109 && !knownIds.has(item.id))
-  const withImages = items.map((item) => item.imageUrl || !demoProductImages[item.id]
-    ? item
-    : { ...item, imageUrl: demoProductImages[item.id] })
-  if (withImages.some((item, index) => item !== items[index]) || newSeedItems.length) write(DEMO_ITEMS, [...withImages, ...newSeedItems])
-  localStorage.setItem(DEMO_SEED_VERSION, '2')
+    : seedItems.filter((item) => Number(item.id) >= (previousVersion === '2' ? 113 : 109) && !knownIds.has(item.id))
+  // Only append newly introduced fixtures. Never replace edits or restore a removed photo.
+  if (newSeedItems.length) write(DEMO_ITEMS, [...items, ...newSeedItems])
+  localStorage.setItem(DEMO_SEED_VERSION, CURRENT_DEMO_SEED_VERSION)
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const method = (init?.method ?? 'GET').toUpperCase()
-  const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(init?.headers as Record<string, string> | undefined) }
+  const headers = new Headers(init?.headers)
+  // The browser supplies the multipart boundary when sending a selected photo.
+  if (!(init?.body instanceof FormData)) headers.set('Content-Type', 'application/json')
   if (!demoOnly() && ['POST', 'PATCH', 'DELETE'].includes(method) && !['/api/auth/login', '/api/auth/register', '/api/auth/logout'].includes(path)) {
     csrfToken ??= (await request<{ csrf_token: string }>('/api/csrf')).csrf_token
-    headers['X-CSRF-Token'] = csrfToken
+    headers.set('X-CSRF-Token', csrfToken)
   }
   const response = await fetch(`${baseUrl}${path}`, {
     ...init, credentials: 'same-origin', headers,
@@ -65,6 +69,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 function demoOnly(): boolean { return import.meta.env.VITE_DEMO_MODE === 'true' }
+
+function photoAsDataUrl(photo: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('Could not read this photo. Please choose another file.'))
+    reader.onerror = () => reject(new Error('Could not read this photo. Please choose another file.'))
+    reader.readAsDataURL(photo)
+  })
+}
 
 function userFromApi(raw: any): User {
   return { id: String(raw.id), fullName: raw.fullName ?? raw.full_name ?? '', email: raw.email, contactPhone: raw.contactPhone ?? raw.contact_phone }
@@ -164,13 +177,24 @@ export const api = {
       const category = (await getCategories()).find((row) => row.name === draft.category)
       if (!category) throw new Error('This listing category is not available on the server.')
       const body = { title: draft.title, description: draft.description, price: String(draft.price), item_condition: conditionToApi(draft.condition), category_id: category.id, location: draft.location, image_url: draft.imageUrl || null }
-      const saved = await request<any>(id ? `/api/items/${id}` : '/api/items', { method: id ? 'PATCH' : 'POST', body: JSON.stringify(body) })
+      let payload: string | FormData = JSON.stringify(body)
+      if (draft.photo) {
+        const multipart = new FormData()
+        // A selected file is the new photo, so do not also send the old URL.
+        for (const [key, value] of Object.entries(body)) if (key !== 'image_url') multipart.append(key, String(value))
+        multipart.append('photo', draft.photo)
+        payload = multipart
+      }
+      const saved = await request<any>(id ? `/api/items/${id}` : '/api/items', { method: id ? 'PATCH' : 'POST', body: payload })
       return (await mapItems([saved.item ?? saved]))[0]
     }
     ensureSeed(); const items = read<Item[]>(DEMO_ITEMS, seedItems)
     const existing = id ? items.find((item) => item.id === id) : undefined
-    const item: Item = { ...existing, ...draft, id: id ?? String(Date.now()), sellerId: existing?.sellerId ?? user.id, sellerName: existing?.sellerName ?? user.fullName, categoryId: existing?.categoryId ?? String(categories.indexOf(draft.category)), status: existing?.status ?? 'available', price: Number(draft.price), createdAt: existing?.createdAt ?? new Date().toISOString() }
-    write(DEMO_ITEMS, existing ? items.map((old) => old.id === id ? item : old) : [item, ...items])
+    const { photo, ...details } = draft
+    const imageUrl = photo ? await photoAsDataUrl(photo) : draft.imageUrl
+    const item: Item = { ...existing, ...details, imageUrl, id: id ?? String(Date.now()), sellerId: existing?.sellerId ?? user.id, sellerName: existing?.sellerName ?? user.fullName, categoryId: existing?.categoryId ?? String(categories.indexOf(draft.category)), status: existing?.status ?? 'available', price: Number(draft.price), createdAt: existing?.createdAt ?? new Date().toISOString() }
+    try { write(DEMO_ITEMS, existing ? items.map((old) => old.id === id ? item : old) : [item, ...items]) }
+    catch { throw new Error('Demo storage is full. Choose a smaller photo or remove it, then save again.') }
     return item
   },
   async deleteItem(id: string) {

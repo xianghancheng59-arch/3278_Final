@@ -12,7 +12,7 @@
     "test": "node scripts/run-tests.js"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=20.9.0"
   },
   "dependencies": {
     "@libsql/client": "^0.17.4",
@@ -23,7 +23,9 @@
     "express-rate-limit": "^8.1.0",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
-    "mysql2": "^3.14.4"
+    "multer": "^2.5.0",
+    "mysql2": "^3.14.4",
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
     "supertest": "^7.1.4"

@@ -1,6 +1,6 @@
 // Exercise the deployed HTTP server and independently check its MySQL rows.
 // Only runs against an explicitly named local review database. Retains demo
-// accounts and a cancelled order so order-history protection can be inspected.
+// accounts and a cancelled order; the fixture listing is hidden from browsing.
 require('dotenv').config();
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -58,6 +58,7 @@ async function call(actor, method, path, data, expected) {
     await call(seller, 'PATCH', `/api/orders/${order.id}/status`, { status: 'cancelled' }, 200);
     assert.equal((await call({}, 'GET', `/api/items/${orderItem.id}`, undefined, 200)).status, 'available');
     await call(seller, 'DELETE', `/api/items/${orderItem.id}`, undefined, 409);
+    await call(seller, 'PATCH', `/api/items/${orderItem.id}`, { status: 'removed' }, 200);
     record('ORDER: confirm/cancel and historical-order deletion protection', { itemId: orderItem.id, orderId: order.id });
     await call(seller, 'POST', '/api/auth/logout', {}, 204);
     await call(seller, 'GET', '/api/auth/me', undefined, 401);

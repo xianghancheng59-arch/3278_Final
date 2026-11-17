@@ -43,7 +43,7 @@ export interface Order {
 export type ItemDraft = Pick<
   Item,
   'title' | 'description' | 'price' | 'condition' | 'category' | 'location' | 'imageUrl'
->
+> & { photo?: File }
 
 export const categories = [
   'All items',
@@ -79,6 +79,8 @@ export const demoProductImages: Record<string, string> = {
   '110': '/images/products/dinnerware-set.jpg',
   '111': '/images/products/drying-rack.jpg',
   '112': '/images/products/dish-rack.jpg',
+  '113': '/images/products/rtx-5090.jpg',
+  '114': '/images/products/dehumidifier.jpg',
 }
 
 export function itemFromApi(value: any): Item {

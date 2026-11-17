@@ -50,6 +50,15 @@ CREATE TABLE items (
     CONSTRAINT ck_items_location CHECK (CHAR_LENGTH(TRIM(location)) > 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- Photo bytes and their listing URL are written together in one transaction.
+CREATE TABLE item_photos (
+    item_id BIGINT PRIMARY KEY,
+    jpeg_bytes MEDIUMBLOB NOT NULL,
+    version CHAR(32) NOT NULL,
+    updated_at DATETIME NOT NULL,
+    CONSTRAINT fk_item_photos_item FOREIGN KEY (item_id) REFERENCES items(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE TABLE favorites (
     user_id BIGINT NOT NULL,
     item_id BIGINT NOT NULL,

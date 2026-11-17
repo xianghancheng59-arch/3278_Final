@@ -1,0 +1,35 @@
+{
+  "create": {
+    "id": "3503675622191259924",
+    "title": "Photo workflow verification",
+    "image_url": "/api/items/3503675622191259924/photo?v=70e9c65d1742f61be11141a2f954228e",
+    "bytes": "117202",
+    "sha256": "79a79a00b436eac3b86a8128a43989328deb1ad5efc464b4ad73257fd3769115",
+    "version": "70e9c65d1742f61be11141a2f954228e"
+  },
+  "replace": {
+    "id": "3503675622191259924",
+    "image_url": "/api/items/3503675622191259924/photo?v=1fd8e87391075e36b7bc571e96d4fae2",
+    "bytes": "30182",
+    "sha256": "205527e973c94c221c0231a09b76ddac7347fa6798518939e9f0faa528b99586",
+    "version": "1fd8e87391075e36b7bc571e96d4fae2"
+  },
+  "metadataOnlyUpdate": {
+    "price": "110.00",
+    "image_url": "/api/items/3503675622191259924/photo?v=1fd8e87391075e36b7bc571e96d4fae2",
+    "sha256": "205527e973c94c221c0231a09b76ddac7347fa6798518939e9f0faa528b99586",
+    "photoPreserved": true
+  },
+  "remove": {
+    "imageUrl": null,
+    "photoRows": 0,
+    "httpStatus": 404
+  },
+  "invalidFile": {
+    "browserRejected": true,
+    "saveDisabled": true
+  },
+  "cleanup": {
+    "testItemDeleted": true
+  }
+}
