@@ -16,12 +16,14 @@ async function start() {
     users: createUserRepository(pool),
     jwtSecret: process.env.JWT_SECRET,
     isProduction: process.env.NODE_ENV === 'production',
-    serveFrontend: process.env.SERVE_FRONTEND === 'true'
+    serveFrontend: process.env.SERVE_FRONTEND === 'true',
+    trustProxy: process.env.TRUST_PROXY || undefined
   });
   const port = Number(process.env.PORT || 3000);
+  const host = process.env.HOST || undefined;
 
-  const server = app.listen(port, () => {
-    console.log(`CampusSwap server listening on http://localhost:${port}`);
+  const server = app.listen({ port, host }, () => {
+    console.log(`CampusSwap server listening on http://${host || 'localhost'}:${port}`);
   });
 
   async function shutdown() {

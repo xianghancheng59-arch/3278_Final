@@ -46,6 +46,14 @@ CREATE TABLE items (
     CONSTRAINT ck_items_location CHECK (length(TRIM(location)) > 0)
 );
 
+CREATE TABLE item_photos (
+    item_id INTEGER PRIMARY KEY,
+    jpeg_bytes BLOB NOT NULL,
+    version TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    CONSTRAINT fk_item_photos_item FOREIGN KEY (item_id) REFERENCES items(id)
+);
+
 CREATE TABLE favorites (
     user_id INTEGER NOT NULL,
     item_id INTEGER NOT NULL,

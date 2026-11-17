@@ -1,0 +1,33 @@
+{
+  "base": "http://127.0.0.1:3001",
+  "database": "campusswap_review_1117",
+  "evidence": [
+    {
+      "step": "CREATE: HTTP 201 and MySQL row",
+      "id": "4086307748059160183",
+      "price": "150.00"
+    },
+    {
+      "step": "READ: detail and combined search filters",
+      "id": "4086307748059160183"
+    },
+    {
+      "step": "UPDATE: same MySQL row; non-owner rejected",
+      "id": "4086307748059160183",
+      "price": "120.00"
+    },
+    {
+      "step": "DELETE: MySQL row/favorites gone, detail HTTP 404",
+      "id": "4086307748059160183"
+    },
+    {
+      "step": "ORDER: confirm/cancel and historical-order deletion protection",
+      "itemId": "4180913857791983399",
+      "orderId": "23408624309219736"
+    },
+    {
+      "step": "AUTH: logout and fresh login",
+      "passed": true
+    }
+  ]
+}

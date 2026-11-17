@@ -47,7 +47,7 @@ FROM (
       'A lightweight indoor rack that folds flat.',
       95.00,'good','available','Main Building','/images/products/drying-rack.jpg',
       '2026-11-09 10:00:00','2026-11-09 10:00:00'
-    UNION ALL SELECT 7000000000000000104,1,4,
+    UNION ALL SELECT 7000000000000000104,4,4,
       'Two-tier dish drying rack',
       'Stainless steel rack with a drip tray.',
       75.00,'like_new','available','Jockey Club Student Village','/images/products/dish-rack.jpg',

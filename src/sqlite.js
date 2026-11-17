@@ -49,6 +49,8 @@ async function createSqlitePool({ url, authToken }) {
       } else if (tables.rows.length !== 5) {
         throw new Error('Incomplete CampusSwap schema. Check the configured database.');
       }
+      // Upgrade an existing five-table database without resetting listings or users.
+      await tx.executeMultiple(readFileSync(path.join(__dirname, '../sql/migrations/2026-11-17-item-photos-sqlite.sql'), 'utf8'));
       await tx.commit();
     } finally {
       tx.close();

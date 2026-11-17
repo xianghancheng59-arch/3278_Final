@@ -6,7 +6,7 @@ const { createApp } = require('../src/app');
 
 const jwtSecret = 'local-test-secret-with-at-least-32-bytes';
 
-function setup({ withProtectedRoute = false } = {}) {
+function setup({ withProtectedRoute = false, isProduction = false, trustProxy } = {}) {
   const records = new Map();
   let nextId = 1;
   const users = {
@@ -37,6 +37,8 @@ function setup({ withProtectedRoute = false } = {}) {
   const app = createApp({
     users,
     jwtSecret,
+    isProduction,
+    trustProxy,
     mountRoutes: withProtectedRoute
       ? (router, { requireAuth }) => router.get('/api/test/protected', requireAuth, (req, res) => res.json({ user: req.user }))
       : undefined
@@ -71,6 +73,32 @@ test('registration validates HKU email and password before creating a row', asyn
     fullName: 'Alice', email: 'alice@connect.hku.hk', password: 'short'
   }).expect(400);
   assert.equal(records.size, 0);
+});
+
+test('a local HTTPS proxy preserves secure cookies and limits authentication per client', async () => {
+  const { app } = setup({ isProduction: true, trustProxy: 'loopback' });
+  const forwarded = { 'X-Forwarded-For': '203.0.113.10', 'X-Forwarded-Proto': 'https' };
+  const registration = await request(app).post('/api/auth/register').set(forwarded).send({
+    fullName: 'Proxy User', email: 'proxy@connect.hku.hk', password: 'proxy-password-123'
+  }).expect(201);
+  const cookie = registration.headers['set-cookie'][0];
+  assert.match(cookie, /; Secure(?:;|$)/);
+  assert.match(cookie, /; HttpOnly(?:;|$)/);
+  assert.match(cookie, /; SameSite=Strict(?:;|$)/);
+  await request(app).get('/api/auth/me').set(forwarded).set('Cookie', cookie.split(';')[0]).expect(200);
+
+  const missingAccount = { email: 'missing@connect.hku.hk', password: 'incorrect-password' };
+  for (let attempt = 0; attempt < 19; attempt += 1) {
+    await request(app).post('/api/auth/login').set(forwarded).send(missingAccount).expect(401);
+  }
+  await request(app).post('/api/auth/login').set(forwarded).send(missingAccount).expect(429);
+  // A forged earlier hop cannot bypass the limit on the nearest untrusted client.
+  await request(app).post('/api/auth/login')
+    .set({ ...forwarded, 'X-Forwarded-For': '198.51.100.20, 203.0.113.10' })
+    .send(missingAccount).expect(429);
+  await request(app).post('/api/auth/login')
+    .set({ ...forwarded, 'X-Forwarded-For': '203.0.113.11' })
+    .send(missingAccount).expect(401);
 });
 
 test('duplicate email is rejected and existing users can log in and log out', async () => {

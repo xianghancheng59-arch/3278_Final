@@ -1,0 +1,24 @@
+{
+  "create": [
+    {
+      "id": "933106790874663268",
+      "title": "CRUD Review Textbook",
+      "price": "150.00",
+      "seller_id": "6229187457708035",
+      "status": "available"
+    }
+  ],
+  "update": [
+    {
+      "id": "933106790874663268",
+      "title": "CRUD Review Textbook",
+      "price": "120.00",
+      "seller_id": "6229187457708035",
+      "status": "available"
+    }
+  ],
+  "delete": {
+    "rows": [],
+    "httpStatus": 404
+  }
+}

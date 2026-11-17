@@ -2,7 +2,7 @@
 
 ## Conceptual model
 
-The relational schema contains five tables. At the conceptual level it has four independent entities - `USERS`, `CATEGORIES`, `ITEMS` and `ORDERS` - plus the associative entity `FAVORITES`. `FAVORITES` resolves the many-to-many relationship between users and items and records when each item was saved.
+The relational schema contains six tables. At the conceptual level it has four independent entities - `USERS`, `CATEGORIES`, `ITEMS` and `ORDERS` - plus the associative entity `FAVORITES`. `FAVORITES` resolves the many-to-many relationship between users and items and records when each item was saved. `ITEM_PHOTOS` is an optional dependent entity that stores one uploaded photo per item.
 
 ```mermaid
 erDiagram
@@ -12,6 +12,7 @@ erDiagram
     ITEMS ||--o{ FAVORITES : is_saved_in
     USERS ||--o{ ORDERS : places
     ITEMS ||--o{ ORDERS : appears_in
+    ITEMS ||--o| ITEM_PHOTOS : has_upload
 
     USERS {
         bigint id PK
@@ -46,6 +47,13 @@ erDiagram
         datetime updated_at
     }
 
+    ITEM_PHOTOS {
+        bigint item_id PK, FK
+        mediumblob jpeg_bytes
+        char version
+        datetime updated_at
+    }
+
     FAVORITES {
         bigint user_id PK, FK
         bigint item_id PK, FK
@@ -74,6 +82,8 @@ erDiagram
 - `USERS` to `ORDERS`: one user can place zero or many orders as a buyer; every order has exactly one buyer through `orders.buyer_id`.
 - `ITEMS` to `ORDERS`: one item can appear in zero or many historical orders; every order refers to exactly one item through `orders.item_id`.
 
+- `ITEMS` to `ITEM_PHOTOS`: an item has zero or one uploaded photo; every uploaded photo belongs to exactly one item. External image URLs do not create photo rows.
+
 ## Order cardinality
 
 An item can have multiple historical orders because cancelled orders are retained. The database deliberately does not put a `UNIQUE` constraint on `orders.item_id`.
@@ -93,7 +103,7 @@ Completed and cancelled orders are terminal. Concurrent buyers are prevented fro
 
 Order history must remain understandable after a listing changes, so `agreed_amount` and `pickup_location` are stored as order snapshots.
 
-Foreign keys prevent hard deletion of items or users that are still referenced. The backend allows deletion only when an item has no order history. For such an unused item, it deletes the item's favorites and the item together in one transaction.
+Foreign keys prevent hard deletion of items or users that are still referenced. The backend allows deletion only when an item has no order history. For such an unused item, it deletes the item's favorites, uploaded photo and the item together in one transaction.
 
 ## Normalization summary
 
