@@ -4,6 +4,8 @@ A full-stack campus second-hand marketplace with user authentication, item listi
 
 ## Hosted SQLite and local MySQL
 
+Pushing or merging into `main` runs [the deployment workflow](.github/workflows/deploy-render.yml). It calls the existing Render service using the repository secret `RENDER_DEPLOY_HOOK`. GitHub Actions confirms that Render accepted the request. The Render **Deploys** page shows the deployed commit and whether the build went live. The [service configuration](render.yaml) specifies the free Singapore instance.
+
 The Render web service runs the React interface and Express API together. Its five marketplace tables live in a persistent Turso SQLite database. An empty SQLite database is initialized from `sql/schema-sqlite.sql` and `sql/seed.sql` in a single transaction. Restarts preserve listings, favorites and orders.
 
 Set `SQLITE_URL` and `SQLITE_AUTH_TOKEN` in Render's private environment, along with `SERVE_FRONTEND=true`, `NODE_ENV=production`, and a generated `JWT_SECRET` of at least 32 bytes. Build with `npm ci && npm ci --prefix frontend --include=dev && npm run build` and start with `npm start`. Rotate the database token in Render before it expires.

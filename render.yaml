@@ -6,7 +6,8 @@ services:
     region: singapore
     repo: https://github.com/xianghancheng59-arch/3278_Final
     branch: main
-    autoDeployTrigger: commit
+    # GitHub Actions triggers the deploy for each push to main.
+    autoDeployTrigger: off
     buildCommand: npm ci && npm ci --prefix frontend --include=dev && npm run build
     startCommand: npm start
     envVars:
